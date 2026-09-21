@@ -1,0 +1,12 @@
+<Bindings>
+	<!-- Key binding actions for Options > Keybindings > AddOns. The client
+	     loads a file with this name from the addon folder by itself (no TOC
+	     entry). BINDING_HEADER_COBYSLINKEPEDIA and the two BINDING_NAME_
+	     globals in Source/Core.lua label them; no default keys are set. -->
+	<Binding name="COBYSLINKEPEDIA_TOGGLE_SEARCH" header="COBYSLINKEPEDIA">
+		CobysLinkepedia_ToggleSearch()
+	</Binding>
+	<Binding name="COBYSLINKEPEDIA_TOGGLE_QUICKSEARCH">
+		CobysLinkepedia_ToggleQuickSearch()
+	</Binding>
+</Bindings>

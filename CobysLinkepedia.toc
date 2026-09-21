@@ -1,0 +1,102 @@
+## Interface: 120100
+## Title: Coby's Linkepedia
+## Version: 2.0.0
+## Author: Cobanyte
+## Notes: Your personal item encyclopedia. Search, autocomplete and link any item in the game from a database the addon builds on your own client, with no addon update needed after a patch.
+## IconTexture: Interface\Icons\INV_Misc_Book_09
+## SavedVariables: COBYS_LINKEPEDIA_DB, COBYS_LINKEPEDIA_CONFIG, COBYS_LINKEPEDIA_STATE, COBYS_LINKEPEDIA_WINDOW_STATE, COBYS_LINKEPEDIA_DEBUG_LOG
+## AddonCompartmentFunc: CobysLinkepedia_OnAddonCompartmentClick
+## AddonCompartmentFuncOnEnter: CobysLinkepedia_OnAddonCompartmentEnter
+## AddonCompartmentFuncOnLeave: CobysLinkepedia_OnAddonCompartmentLeave
+
+# Embedded CobySuite Library
+Libs\CobySuite\Source\Core.lua
+Libs\CobySuite\Build.lua
+Libs\CobySuite\Source\EventBus.lua
+Libs\CobySuite\Source\Utilities\Main.lua
+Libs\CobySuite\Source\Utilities\Data.lua
+Libs\CobySuite\Source\Utilities\ItemLoad.lua
+Libs\CobySuite\Source\Chat\Main.lua
+Libs\CobySuite\Source\Slash\Main.lua
+Libs\CobySuite\Source\Config\Main.lua
+Libs\CobySuite\Source\UI\Factories.lua
+Libs\CobySuite\Source\UI\Window.lua
+Libs\CobySuite\Source\UI\SettingsWindow.lua
+Libs\CobySuite\Source\UI\TableHeader.lua
+Libs\CobySuite\Source\UI\Toast.lua
+Libs\CobySuite\Source\UI\Launcher.lua
+Libs\CobySuite\Source\UI\Guide.lua
+Libs\CobySuite\Source\Debug\Logger.lua
+Libs\CobySuite\Source\Debug\Window.lua
+
+## Core
+Source\Core.lua
+Source\EventBus.lua
+
+## Debug
+Source\Debug\Logger.lua
+Source\Debug\Window.lua
+
+## Utilities
+Source\Utilities\Main.lua
+Source\Utilities\TableHeader.lua
+
+## Config
+Source\Config\Main.lua
+Source\Config\Window.lua
+Source\Config\WelcomeWindow.lua
+Source\Config\UpdateWindow.lua
+
+## Database
+Source\Database\Main.lua
+Source\Database\Capture.lua
+Source\Database\Recipes.lua
+
+## Scanner
+Source\Scanner\Main.lua
+Source\Scanner\Recipes.lua
+
+## Autocomplete
+Source\Autocomplete\Main.lua
+Source\Autocomplete\Dropdown.lua
+
+## Linkify
+Source\Linkify\Main.lua
+Source\Linkify\Tokens.lua
+
+## Variants
+Source\Variants\TrackData.lua
+Source\Variants\Tracks.lua
+Source\Variants\Crafted.lua
+Source\Variants\Store.lua
+
+## Search
+Source\Search\Window.lua
+Source\Search\VariantActions.lua
+Source\Search\ItemList.lua
+Source\Search\Results.lua
+Source\Search\DetailPane.lua
+Source\Search\FilterBar.lua
+Source\Search\Favorites.lua
+Source\Search\History.lua
+Source\Search\Stats.lua
+Source\Search\ScanStatus.lua
+Source\Search\StatsWindow.lua
+Source\Search\StatusWindow.lua
+Source\Search\VariantBuilder.lua
+
+## Quick Search
+Source\QuickSearch\Main.lua
+
+## Macro Tokens
+Source\MacroTokens\Editor.lua
+Source\MacroTokens\Panel.lua
+
+## Toast
+Source\Toast\Main.lua
+
+## Minimap
+Source\Minimap\Main.lua
+
+## Guide
+Source\Guide\Main.lua
