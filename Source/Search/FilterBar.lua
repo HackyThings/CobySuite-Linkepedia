@@ -119,15 +119,12 @@ function Search.InitFilterBar(window)
 
   local expLabels, expValues = ExpansionOptions()
   expDD = FilterDropDown("expansion", EXPANSION_WIDTH, { "RIGHT", clearButton, "LEFT", -GAP, 0 }, expLabels, expValues)
-  filterFrame.ExpDD = expDD
 
   local typeLabels, typeValues = TypeOptions()
   typeDD = FilterDropDown("type", TYPE_WIDTH, { "RIGHT", expDD, "LEFT", -GAP, 0 }, typeLabels, typeValues)
-  filterFrame.TypeDD = typeDD
 
   local qualityLabels, qualityValues = QualityOptions()
   qualityDD = FilterDropDown("quality", QUALITY_WIDTH, { "RIGHT", typeDD, "LEFT", -GAP, 0 }, qualityLabels, qualityValues)
-  filterFrame.QualityDD = qualityDD
 
   -- The window's child, not the filter row's, so it shows on every tab
   local modeDD = Utilities.CreateDropDown(window, {
@@ -137,7 +134,6 @@ function Search.InitFilterBar(window)
     value = Search.GetSearchMode(),
     onValueChanged = function(mode) Search.SetSearchMode(mode) end,
   })
-  window.SearchModeDD = modeDD
   -- The search box ran to the window's edge until now (Window.lua); end it at the picker
   if window.SearchBox then
     window.SearchBox:SetPoint("RIGHT", modeDD, "LEFT", -GAP, 0)

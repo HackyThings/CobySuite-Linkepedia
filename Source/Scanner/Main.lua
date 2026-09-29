@@ -123,7 +123,7 @@ local refineFinalPending = {}   -- IDs that still fail after refine (saved for i
 -- Expand mode: stored and dead IDs
 local expandKnownIDs = nil
 
--- How many IDs this scan found dead (refused by the server)
+-- How many IDs this scan found dead (unanswered for the second scan running, or refused)
 local deadThisScan = 0
 
 -- Idle scan state (see its section below)
@@ -216,15 +216,28 @@ end
 -- The client's own item data (GetItemInfoInstant, which never asks the
 -- server) lists tens of thousands of IDs the server does not serve: on build
 -- 69875 an Expand over the whole range found 37,151 of them beside the 176,219
--- it stores, and the server named at most 4. Since patch 10.0.5 the server
--- answers a load request for such an ID with ITEM_DATA_LOAD_RESULT success
--- false, and Blizzard's own loader treats that answer as final (its
--- AsyncCallbackSystem drops the callbacks). An ID the server refused, or one
--- that never answered through a scan's query and refine and the idle retries,
--- is dead for this client build: Expand and the idle
--- queue skip it instead of asking again. The list is saved per build
--- (scanState.dead, ascending IDs as hex deltas) and starts empty on a new
--- build, so each build checks every ID once; a Build starts it over too.
+-- it stores, and the server named at most 4. The server turns a minority
+-- of them down (ITEM_DATA_LOAD_RESULT success false, the 10.0.5 behaviour)
+-- and leaves the rest unanswered; measured in the client on 2026-09-21,
+-- build 69875: an Expand over 17,325 such IDs got 1,023 refusals in time and
+-- about as many again too late for that scan (the next Expand found 986
+-- waiting the moment it started), and no answer of any kind for some 15,000
+-- across two scans; the suite's live lab got none for 40 of 40 in ten
+-- seconds, while 40 stored items all loaded within 1.1 s. So a refusal kills
+-- an ID at once, whenever it arrives (serverRefused is kept for the session
+-- and read by scans and the idle scan alike), and silence kills it when it
+-- went unanswered twice:
+--   - through two complete scans (each asks in query and again in refine):
+--     the first leaves it in scanState.unanswered, the second finds it there
+--     (SettleUnanswered); or
+--   - through a scan and then IDLE_MAX_RETRIES idle asks (the newest
+--     PENDING_CAP of a scan's unanswered IDs go to the idle queue).
+-- Expand and the idle queue skip dead IDs instead of asking again. On that
+-- build two Expands settled all 37,139 of them and the third asked the
+-- server nothing (a 2 s walk). Both
+-- lists are saved per build (scanState.dead and scanState.unanswered,
+-- ascending IDs as hex deltas) and start empty on a new build, so each build
+-- checks every ID afresh; a Build starts them over too.
 -------------------------------------------------------------------------------
 local deadSet, deadList, deadFor, deadBuild, deadDirty
 local serverRefused = {}   -- itemID -> true, from ITEM_DATA_LOAD_RESULT this session
@@ -322,8 +335,58 @@ end
 
 local function ForgetDead()
   local scanState = COBYS_LINKEPEDIA_DB and COBYS_LINKEPEDIA_DB.scanState
-  if type(scanState) == "table" then scanState.dead = nil end
+  if type(scanState) == "table" then
+    scanState.dead = nil
+    scanState.unanswered = nil
+  end
   deadSet = nil
+end
+
+-- The IDs the last complete scan on this client build left unanswered, as a
+-- set; nil when there are none (or the saved text is damaged)
+local function UnansweredSet()
+  local scanState = COBYS_LINKEPEDIA_DB and COBYS_LINKEPEDIA_DB.scanState
+  local saved = type(scanState) == "table" and scanState.unanswered or nil
+  if type(saved) ~= "table" or saved.build ~= ClientBuild() or type(saved.ids) ~= "string" then return nil end
+  return (DecodeDead(saved.ids))
+end
+
+-- How many IDs have gone unanswered through one complete scan so far
+function Scanner.GetUnansweredCount()
+  local scanState = COBYS_LINKEPEDIA_DB and COBYS_LINKEPEDIA_DB.scanState
+  local saved = type(scanState) == "table" and scanState.unanswered or nil
+  if type(saved) ~= "table" or saved.build ~= ClientBuild() or type(saved.count) ~= "number" then return 0 end
+  return saved.count
+end
+
+-- A completing scan's unanswered IDs (list): one the scan before it also left
+-- unanswered is dead now; the rest are remembered for the next scan, which
+-- replaces the record. Returns the ones still worth asking about, for the
+-- idle queue, and how many died.
+local function SettleUnanswered(list)
+  local before = UnansweredSet()
+  local remaining, died = {}, 0
+  for i = 1, #list do
+    local id = list[i]
+    if before and BitsetTest(before, id) then
+      MarkDead(id)
+      died = died + 1
+    else
+      remaining[#remaining + 1] = id
+    end
+  end
+  local scanState = COBYS_LINKEPEDIA_DB and COBYS_LINKEPEDIA_DB.scanState
+  if type(scanState) == "table" then
+    if #remaining > 0 then
+      local sorted = {}
+      for i = 1, #remaining do sorted[i] = remaining[i] end
+      table.sort(sorted)
+      scanState.unanswered = { build = ClientBuild(), count = #sorted, ids = EncodeIDs(sorted) }
+    else
+      scanState.unanswered = nil
+    end
+  end
+  return remaining, died
 end
 
 -- The server's answers to item load requests, whoever made them. Only a
@@ -387,12 +450,6 @@ local function GetProgressPair(forState)
     return 0, #queryFailedIDs
   end
   return queryIdx, #discoverValidIDs
-end
-
-local function FireProgress()
-  local pos, total = GetProgressPair()
-  local pct = pos / math.max(total, 1)
-  CobysLinkepedia.EventBus:Fire(CobysLinkepedia.Events.ScanProgress, pct, itemsFound, pos, total)
 end
 
 -------------------------------------------------------------------------------
@@ -509,8 +566,6 @@ local function StepDiscover()
   discoverMaxFound, discoverGapCount = w.maxFound, w.gapCount
   w.known, w.ids = nil, nil
 
-  FireProgress()
-
   -- Expand ignores the gap threshold here as well as inside the loop above:
   -- it promises the full range up to the ceiling, and a new item can sit
   -- past a long run of unused IDs
@@ -561,8 +616,6 @@ local function StepQuery()
     end
   end
 
-  FireProgress()
-
   -- Batch full or all IDs done: harvest if needed
   if #batchUncachedIDs >= batchCap or queryIdx >= total then
     if #batchUncachedIDs > 0 then
@@ -599,8 +652,6 @@ local function StepQueryHarvest()
       if (debugprofilestop() - frameStart) >= timeBudget then break end
     end
   end
-
-  FireProgress()
 
   if harvestIdx >= #batchUncachedIDs then
     batchUncachedIDs = {}
@@ -650,8 +701,6 @@ local function StepRefine()
     end
   end
 
-  FireProgress()
-
   if #refineBatchIDs >= batchCap or refineIdx >= total then
     if #refineBatchIDs > 0 then
       state = STATE_REFINE_WAIT_BATCH
@@ -686,8 +735,6 @@ local function StepRefineHarvest()
     end
   end
 
-  FireProgress()
-
   if refineHarvestIdx >= #refineBatchIDs then
     refineBatchIDs = {}
     refineHarvestIdx = 0
@@ -713,12 +760,16 @@ local function StepComplete()
   local minutes = math.floor(elapsed / 60)
   local seconds = math.floor(elapsed % 60)
 
-  -- Where every valid ID of this pass ended up: stored, dead (refused by
-  -- the server), deferred to the idle retry queue, or dropped past the
-  -- queue's cap. Over the cap the newest IDs stay: an item the server is
-  -- slow to send after a patch has a high ID, while the low ones that fail
-  -- are mostly retired items.
+  -- Where every valid ID of this pass ended up: stored, dead (unanswered
+  -- for the second complete scan running, or refused), deferred to the idle
+  -- retry queue, or past the queue's cap (those wait for the next scan,
+  -- which kills them if they stay silent). Over the cap the newest IDs stay:
+  -- an item the server is slow to send after a patch has a high ID, while
+  -- the low ones that fail are mostly retired items.
   local queried = #discoverValidIDs
+  local silentTwice
+  refineFinalPending, silentTwice = SettleUnanswered(refineFinalPending)
+  deadThisScan = deadThisScan + silentTwice
   local deferred = #refineFinalPending
   local dropped = 0
   if deferred > pendingCap then
@@ -754,10 +805,10 @@ local function StepComplete()
     Database.PruneVariants()
   end
 
-  Debug.State("SCAN", "Scan counts (%s): %d queried, %d stored, %d refused by the server, %d deferred to the idle queue, %d dropped over the %d cap",
-    scanMode or "?", queried, itemsFound, deadThisScan, deferred, dropped, pendingCap)
+  Debug.State("SCAN", "Scan counts (%s): %d queried, %d stored, %d dead (%d unanswered for the second scan running), %d deferred to the idle queue, %d over the %d cap (asked again by the next scan)",
+    scanMode or "?", queried, itemsFound, deadThisScan, silentTwice, deferred, dropped, pendingCap)
   CobysLinkepedia.Utilities.Message(string.format(
-    "Queried %d item IDs: %d stored, %d the server does not have, %d queued for idle retry, %d dropped over the queue cap.",
+    "Queried %d item IDs: %d stored, %d the server does not have, %d queued for idle retry, %d left for the next scan.",
     queried, itemsFound, deadThisScan, deferred, dropped), "verbose")
 
   ReleaseScanTables()
@@ -794,7 +845,6 @@ local function OnUpdate(self, elapsed)
       pausedInCombat = true
       state = STATE_PAUSED
       Debug.State("SCAN", "Paused for combat")
-      CobysLinkepedia.EventBus:Fire(CobysLinkepedia.Events.ScanPaused, "combat")
     end
     return
   end
@@ -802,7 +852,6 @@ local function OnUpdate(self, elapsed)
     pausedInCombat = false
     state = prePauseState or STATE_DISCOVER
     Debug.State("SCAN", "Resumed after combat → %s", state)
-    CobysLinkepedia.EventBus:Fire(CobysLinkepedia.Events.ScanResumed)
   end
   if state == STATE_PAUSED then return end
 
@@ -876,7 +925,6 @@ local function DoStartBuild(intensity)
   scanFrame:SetScript("OnUpdate", OnUpdate)
 
   Debug.State("SCAN", "Build scan started (%s), discovering valid IDs...", scanIntensity or "normal")
-  CobysLinkepedia.EventBus:Fire(CobysLinkepedia.Events.ScanStarted, "build")
   CobysLinkepedia.Utilities.Message("Discovering valid item IDs...", "normal")
 end
 
@@ -961,7 +1009,6 @@ local function StartExpandScan(intensity)
 
   Debug.State("SCAN", "Expand scan started (%s): %d stored and %d dead skipped, discovering new IDs...",
     scanIntensity or "normal", skipCount, deadCount)
-  CobysLinkepedia.EventBus:Fire(CobysLinkepedia.Events.ScanStarted, "expand")
   CobysLinkepedia.Utilities.Message(string.format(
     "Discovering new item IDs (skipping %d stored and %d the server does not have)...", skipCount, deadCount), "normal")
 end
@@ -984,7 +1031,6 @@ function Scanner.Pause()
   prePauseState = state
   state = STATE_PAUSED
   Debug.State("SCAN", "Scan paused in %s phase", prePauseState or "?")
-  CobysLinkepedia.EventBus:Fire(CobysLinkepedia.Events.ScanPaused, "manual")
   CobysLinkepedia.Utilities.Message("Scan paused.")
 end
 
@@ -1001,7 +1047,6 @@ function Scanner.Resume()
   state = prePauseState or STATE_DISCOVER
   prePauseState = nil
   Debug.State("SCAN", "Scan resumed → %s", state)
-  CobysLinkepedia.EventBus:Fire(CobysLinkepedia.Events.ScanResumed)
   CobysLinkepedia.Utilities.Message("Scan resumed.")
 end
 
@@ -1110,7 +1155,6 @@ function Scanner.Hold()
     state = STATE_PAUSED
     heldScan = true
     Debug.State("SCAN", "Scan held in %s phase", prePauseState or "?")
-    CobysLinkepedia.EventBus:Fire(CobysLinkepedia.Events.ScanPaused, "hold")
   elseif scanActive and pausedInCombat then
     -- Paused by combat: the hold owns it now, so PLAYER_REGEN_ENABLED
     -- leaves it alone until Release
@@ -1129,7 +1173,6 @@ function Scanner.Release()
       state = prePauseState or STATE_DISCOVER
       prePauseState = nil
       Debug.State("SCAN", "Hold released, scan resumed -> %s", state)
-      CobysLinkepedia.EventBus:Fire(CobysLinkepedia.Events.ScanResumed)
     end
   end
   heldScan = false
@@ -1356,7 +1399,6 @@ combatFrame:SetScript("OnEvent", function(_, event)
       pausedInCombat = true
       state = STATE_PAUSED
       Debug.State("SCAN", "Combat lockdown: scan paused")
-      CobysLinkepedia.EventBus:Fire(CobysLinkepedia.Events.ScanPaused, "combat")
     end
   elseif event == "PLAYER_REGEN_ENABLED" then
     if scanActive and pausedInCombat then
@@ -1364,7 +1406,6 @@ combatFrame:SetScript("OnEvent", function(_, event)
       state = prePauseState or STATE_DISCOVER
       prePauseState = nil
       Debug.State("SCAN", "Combat ended: scan resumed → %s", state)
-      CobysLinkepedia.EventBus:Fire(CobysLinkepedia.Events.ScanResumed)
     end
   end
 end)

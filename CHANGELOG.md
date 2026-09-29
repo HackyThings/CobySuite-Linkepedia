@@ -4,6 +4,22 @@ All notable changes to Coby's Linkepedia are documented here. Format follows [Ke
 
 ## [Unreleased]
 
+## [2.0.1] - 2026-09-29
+
+### Changed
+
+- **Windows no longer stay on top of the game's own windows.** Coby's Linkepedia's windows now sit with the game's panels: clicking any window brings it to the front, and a window opens in front. Only questions that need an answer, such as confirmations, stay above everything.
+- The settings window can now be made bigger by dragging its bottom-right corner, and it remembers its size.
+- Settings sections sit closer together, so each group reads as one block.
+- The command list in chat (`/lp help`) is easier to read: commands in gold and their descriptions in white.
+
+### Fixed
+
+- The minimap button sits just outside the minimap's edge again, and follows it when Edit Mode resizes the minimap; on the larger minimap it had been stuck inside the map.
+- Resizing the search window by its corner no longer makes it jump bigger than where the cursor is, and a column drag in the results always ends when you let go. Pressing a column divider no longer makes that column slightly narrower.
+- Expand now learns which item IDs the server does not have after two scans. The server refuses only a few of them and never answers for the rest, and only the 5,000 newest silent ones per scan were being retired (through the idle scan), so Expand kept asking about tens of thousands of IDs every time. An ID that stays silent through two complete scans is now skipped until the next game patch, and `/lp status` shows how many have gone unanswered once. Once they are all known, an Expand with nothing new to find takes about two seconds and asks the server nothing.
+- **Blocked-action errors after opening the settings from the game's menu:** pressing **Open Settings** on the Coby's Linkepedia page under Options > AddOns brought the game menu back behind the settings window, and the game blamed Coby's Linkepedia for SpellStopCasting, SpellStopTargeting and an unnamed protected action ("Coby's Linkepedia has been blocked from an action only available to the Blizzard UI"). The button now just closes Options and opens the settings window.
+
 ## [2.0.0] - 2026-09-21
 
 Coby's Linkepedia 2.0 is a complete rewrite of Linkepedia (last released as 1.5.0) for WoW Midnight 12.1. Nothing carries over from the old version, and there is no data to migrate.
@@ -33,5 +49,6 @@ Coby's Linkepedia 2.0 is a complete rewrite of Linkepedia (last released as 1.5.
 - If the saved item database is damaged, it is cleared at login and a dialog offers to rebuild it. Favorites, history and settings are kept.
 - English game clients are supported: capitalisation is ignored for the letters A to Z, and a quoted search such as `"ring"` matches whole words.
 
-[Unreleased]: https://github.com/HackyThings/CobySuite-Linkepedia/compare/v2.0.0...HEAD
+[Unreleased]: https://github.com/HackyThings/CobySuite-Linkepedia/compare/v2.0.1...HEAD
+[2.0.1]: https://github.com/HackyThings/CobySuite-Linkepedia/releases/tag/v2.0.1
 [2.0.0]: https://github.com/HackyThings/CobySuite-Linkepedia/releases/tag/v2.0.0

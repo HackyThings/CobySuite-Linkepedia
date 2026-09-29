@@ -10,12 +10,9 @@ for k, v in pairs(Shared) do Utilities[k] = v end
 -- Import shared UI factories as Utilities methods (backwards compatibility)
 Utilities.AddTooltip        = SharedUI.AddTooltip
 Utilities.AddItemTooltip    = SharedUI.AddItemTooltip
-Utilities.AddRichTooltip    = SharedUI.AddRichTooltip
 Utilities.CreateButton      = SharedUI.CreateButton
-Utilities.CreateToolbar     = SharedUI.CreateToolbar
 Utilities.CreateDropDown    = SharedUI.CreateDropDown
 Utilities.CreateDialogPopup = SharedUI.CreateDialogPopup
-Utilities.CreateClearButton = SharedUI.CreateClearButton
 
 ---------------------------------------------------------------------------
 -- Colors: copy shared palette + add addon-specific colors

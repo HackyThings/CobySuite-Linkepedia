@@ -194,6 +194,15 @@ local SECTIONS = {
         end,
       },
       {
+        key = "unanswered", label = "No answer so far",
+        tooltip = "Item IDs the last scan asked the server about twice and heard nothing. If the next Expand hears nothing either, they are skipped from then on.",
+        value = function()
+          local count = Scanner.GetUnansweredCount()
+          if count == 0 then return Gray("None") end
+          return Plural(count, "item ID", "item IDs") .. Gray("  (one more silent scan and they are skipped)")
+        end,
+      },
+      {
         key = "dead", label = "Not on the server",
         tooltip = "Item IDs your game client lists but the server does not have. They are skipped until the next game patch.",
         value = function()

@@ -168,7 +168,7 @@ function Scanner.IsRecipeScanActive()
 end
 
 -- { active, waiting (a reason or nil), complete (for this client build),
---   position, ceiling, fraction, indexed, eta (seconds, or nil), date }
+--   fraction, indexed, eta (seconds, or nil) }
 function Scanner.GetRecipeScanStatus()
   local scan = Database.GetRecipeScanState() or {}
   local position = scan.next or 0
@@ -177,11 +177,8 @@ function Scanner.GetRecipeScanStatus()
     active = job ~= nil,
     waiting = job and WaitReason() or nil,
     complete = scan.complete == true and scan.build == ClientBuild(),
-    position = position,
-    ceiling = ceiling,
     fraction = math.min(position / ceiling, 1),
     indexed = Database.GetRecipeCount(),
-    date = scan.date,
   }
   if job and job.activeSeconds >= 1 and position > job.startPosition then
     local rate = (position - job.startPosition) / job.activeSeconds

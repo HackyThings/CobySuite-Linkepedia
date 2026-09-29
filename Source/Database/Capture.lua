@@ -19,7 +19,7 @@ local MAX_PROCESSED_LINKS = 10000
 -------------------------------------------------------------------------------
 -- Item link parsing
 --
--- The item string (warcraft.wiki.gg, ItemLink), colon-separated, empty
+-- The item string (an item link's payload), colon-separated, empty
 -- fields kept:
 --   1 itemID, 2 enchantID, 3-6 gemID1-4, 7 suffixID, 8 uniqueID,
 --   9 linkLevel, 10 specializationID, 11 modifiersMask, 12 itemContext,
@@ -36,8 +36,8 @@ local function WholeNumber(field)
   return nil
 end
 
--- { itemID, bonusIDs = { id, ... }, modifiers = { { type =, value = }, ... },
--- payload } for an item link or a bare item string, or nil. A variant is a
+-- { itemID, bonusIDs = { id, ... }, modifiers = { { type =, value = }, ... } }
+-- for an item link or a bare item string, or nil. A variant is a
 -- link with at least one bonus id. The display name is never read, so a
 -- name containing ":" cannot shift a field.
 function Capture.ParseItemLink(link)
@@ -49,7 +49,7 @@ function Capture.ParseItemLink(link)
   local itemID = tonumber(fields[1])
   if not itemID then return nil end
 
-  local parsed = { itemID = itemID, bonusIDs = {}, modifiers = {}, payload = payload }
+  local parsed = { itemID = itemID, bonusIDs = {}, modifiers = {} }
   local pos = FIELD_NUM_BONUS_IDS
 
   -- The bonus list counts only when it is well formed: an empty count field

@@ -2,7 +2,6 @@
 
 local Search = CobysLinkepedia.Search
 local Utilities = CobysLinkepedia.Utilities
-local Config = CobysLinkepedia.Config
 local Debug = CobysLinkepedia.Debug
 
 -- The results table is 655px of columns and the detail pane side costs another
@@ -117,8 +116,8 @@ end
 -------------------------------------------------------------------------------
 function CobysLinkepediaSearchWindowMixin:BuildSearchBox()
   -- Blizzard's SearchBoxTemplate through the shared factory, the same box Coby's
-  -- Currency Searcher and Public Order Whisper use: magnifier, placeholder,
-  -- built-in clear button, debounce, and Escape-clears all come with it. The
+  -- Currency Searcher uses: magnifier, placeholder, built-in clear button,
+  -- debounce, and Escape-clears all come with it. The
   -- hand-rolled InputBoxTemplate this replaces needed a separate "Search:"
   -- label, its own clear button and its own debounce, and looked nothing like
   -- the other addons.
@@ -151,7 +150,6 @@ function CobysLinkepediaSearchWindowMixin:DoSearch(query)
   if Search.RefreshResults then
     Search.RefreshResults(query, "user")
   end
-  CobysLinkepedia.EventBus:Fire(CobysLinkepedia.Events.SearchResultsUpdated, query)
 end
 
 -------------------------------------------------------------------------------
@@ -198,9 +196,7 @@ end
 -- MacroTokens/Editor.lua), so there chat opens instead.
 -------------------------------------------------------------------------------
 function Search.PutInChat(text)
-  if (MacroFrameText and MacroFrameText:HasFocus()) or not ChatFrameUtil.InsertLink(text) then
-    ChatFrameUtil.OpenChat(text)
-  end
+  CobySuite_CobysLinkepedia.Chat.PutInChat(text)
 end
 
 -------------------------------------------------------------------------------
@@ -273,7 +269,6 @@ function CobysLinkepediaSearchWindowMixin:BuildTabs()
   overlay:SetFrameLevel(tabLevel + 1)
   if self.BotLeftCorner then self.BotLeftCorner:SetParent(overlay) end
   if self.BottomBorder then self.BottomBorder:SetParent(overlay) end
-  self.BorderOverlay = overlay
 end
 
 function CobysLinkepediaSearchWindowMixin:SetTab(tabName)

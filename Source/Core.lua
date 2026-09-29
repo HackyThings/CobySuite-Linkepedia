@@ -19,10 +19,6 @@ CobysLinkepedia = {
 -- EventBus event constants
 -------------------------------------------------------------------------------
 CobysLinkepedia.Events = {
-  ScanStarted        = "cobys_linkepedia_scan_started",
-  ScanProgress       = "cobys_linkepedia_scan_progress",
-  ScanPaused         = "cobys_linkepedia_scan_paused",
-  ScanResumed        = "cobys_linkepedia_scan_resumed",
   ScanCancelled      = "cobys_linkepedia_scan_cancelled",
   ScanComplete       = "cobys_linkepedia_scan_complete",
   DatabaseUpdated    = "cobys_linkepedia_database_updated",
@@ -30,7 +26,6 @@ CobysLinkepedia.Events = {
   FavoriteChanged    = "cobys_linkepedia_favorite_changed",
   HistoryUpdated     = "cobys_linkepedia_history_updated",
   ConfigChanged      = "cobys_linkepedia_config_changed",
-  SearchResultsUpdated = "cobys_linkepedia_search_results_updated",
   -- (id, itemID, change): change is "saved", "updated", "deleted" or "favorite"
   SavedVariantsChanged = "cobys_linkepedia_saved_variants_changed",
   RecipeIndexUpdated   = "cobys_linkepedia_recipe_index_updated",

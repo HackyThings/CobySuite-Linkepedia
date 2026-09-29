@@ -147,6 +147,5 @@ function Search.CreateItemList(parent, opts)
     scrollBox:SetDataProvider(CreateIndexRangeDataProvider(#entries), retain)
   end
 
-  list.ScrollBox = scrollBox
   return list
 end

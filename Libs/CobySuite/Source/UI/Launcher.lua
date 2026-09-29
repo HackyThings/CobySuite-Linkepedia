@@ -21,7 +21,8 @@
 --     isShown = function() return Config.Get("showMinimapButton") ~= false end,  -- default: always
 --     minimapButton = true,                   -- false: no minimap button
 --     broker        = true,                   -- false: no LibDataBroker object
---     radius        = 80,                     -- button centre from the minimap centre
+--     radius        = 80,                     -- button centre from the minimap centre; default: just
+--                                             -- outside the minimap's edge, whatever its size
 --     buttonTooltipAnchor      = "ANCHOR_LEFT",
 --     compartmentTooltipAnchor = "ANCHOR_RIGHT",
 --   })
@@ -48,7 +49,13 @@
 local UI = CobySuite_CobysLinkepedia.UI
 
 local BUTTON_SIZE = 32
-local DEFAULT_RADIUS = 80
+-- The button's centre sits this far outside the minimap's edge (on the
+-- classic 140-pixel minimap that is the old fixed 80). The radius is read
+-- from the minimap each time, since the current minimap is larger and Edit
+-- Mode can resize it; a fixed 80 put the button inside the map (a curator's
+-- report, 2026-09-28)
+local EDGE_OFFSET = 10
+local FALLBACK_RADIUS = 80
 local DEFAULT_ANGLE = 220
 local BORDER_TEXTURE = "Interface\\Minimap\\MiniMap-TrackingBorder"
 local HIGHLIGHT_TEXTURE = "Interface\\Minimap\\UI-Minimap-ZoomButton-Highlight"
@@ -101,7 +108,11 @@ end
 function LauncherMixin:PositionButton(angle)
   local button = self.Button
   if not button then return end
-  local radius = self._opts.radius or DEFAULT_RADIUS
+  local radius = self._opts.radius
+  if not radius then
+    local ok, width = pcall(Minimap.GetWidth, Minimap)
+    radius = (ok and IsFiniteNumber(width) and width > 0) and (width / 2 + EDGE_OFFSET) or FALLBACK_RADIUS
+  end
   local rads = math.rad(angle)
   button:ClearAllPoints()
   button:SetPoint("CENTER", Minimap, "CENTER", math.cos(rads) * radius, math.sin(rads) * radius)
@@ -162,11 +173,9 @@ function LauncherMixin:CreateButton()
   -- Drag around the minimap; the angle is saved as it moves
   btn:RegisterForDrag("LeftButton")
   btn:SetScript("OnDragStart", function(frame)
-    frame.isDragging = true
     frame:SetScript("OnUpdate", function() launcher:SetAngle(AngleFromCursor()) end)
   end)
   btn:SetScript("OnDragStop", function(frame)
-    frame.isDragging = false
     frame:SetScript("OnUpdate", nil)
     launcher:SetAngle(AngleFromCursor())
   end)
@@ -211,6 +220,13 @@ function LauncherMixin:Initialize()
     self:CreateButton()
     self:PositionButton(self:GetAngle())
     self:RefreshShown()
+    -- Edit Mode can resize the minimap: the button follows its edge (a
+    -- post-hook, which leaves the minimap's own script untouched)
+    if not self._sizeHooked and not opts.radius then
+      self._sizeHooked = pcall(Minimap.HookScript, Minimap, "OnSizeChanged", function()
+        self:PositionButton(self:GetAngle())
+      end)
+    end
   end
   if opts.broker ~= false then
     self:RegisterBroker()

@@ -1,6 +1,6 @@
 ## Interface: 120100
 ## Title: Coby's Linkepedia
-## Version: 2.0.0
+## Version: 2.0.1
 ## Author: Cobanyte
 ## Notes: Your personal item encyclopedia. Search, autocomplete and link any item in the game from a database the addon builds on your own client, with no addon update needed after a patch.
 ## IconTexture: Interface\Icons\INV_Misc_Book_09

@@ -192,40 +192,12 @@ local function CreateStatsWindow()
     escapeCloses = true,
   })
 
-  f._rows = {}
   f._memTimer = 0
 
-  for i, metric in ipairs(METRICS) do
-    local row = CreateFrame("Frame", nil, f)
-    row:SetHeight(ROW_H)
-    row:SetPoint("TOPLEFT", PAD, -((i - 1) * ROW_H) - 28)
-    row:SetPoint("TOPRIGHT", -PAD, -((i - 1) * ROW_H) - 28)
-
-    Utilities.AddAlternatingRowBg(row, i)
-
-    local label = row:CreateFontString(nil, "OVERLAY", Utilities.Fonts.SMALL)
-    label:SetPoint("LEFT", 0, 0)
-    label:SetWidth(LABEL_W)
-    label:SetJustifyH("LEFT")
-    label:SetText(metric.label)
-    local lg = Utilities.Colors.LABEL_GRAY
-    label:SetTextColor(lg[1], lg[2], lg[3])
-
-    local value = row:CreateFontString(nil, "OVERLAY", Utilities.Fonts.DATA)
-    value:SetPoint("LEFT", label, "RIGHT", 4, 0)
-    value:SetPoint("RIGHT", -4, 0)
-    value:SetJustifyH("LEFT")
-    value:SetText("--")
-
-    row.Value = value
-
-    if metric.tooltip then
-      row:EnableMouse(true)
-      Utilities.AddTooltip(row, metric.tooltip)
-    end
-
-    f._rows[i] = row
-  end
+  -- the shared metric rows (CobySuite.UI.CreateMetricList)
+  f._metricList = CobySuite_CobysLinkepedia.UI.CreateMetricList(f, METRICS, {
+    labelWidth = LABEL_W, padding = PAD, top = 28, errorText = "|cFFFF4D4Derror|r",
+  })
 
   -- Refresh logic
   function f:RefreshMetrics()
@@ -234,13 +206,7 @@ local function CreateStatsWindow()
       UpdateAddOnMemoryUsage()
       self._memTimer = 0
     end
-    for i, metric in ipairs(METRICS) do
-      local row = self._rows[i]
-      if row then
-        local ok, val = pcall(metric.getValue)
-        row.Value:SetText(ok and val or "|cFFFF4D4Derror|r")
-      end
-    end
+    self._metricList.Refresh()
   end
 
   -- Every UPDATE_INTERVAL while shown, and on the first frame after a show

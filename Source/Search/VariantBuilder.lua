@@ -539,7 +539,7 @@ local function RefreshHeader()
     return
   end
   local item = ItemRecord(state.itemID)
-  local _, itemType, itemSubType, equipLoc, icon = C_Item.GetItemInfoInstant(state.itemID)
+  local _, _, itemSubType, equipLoc, icon = C_Item.GetItemInfoInstant(state.itemID)
   frame.Icon:SetTexture(icon or QUESTION_MARK)
   frame.ItemName:SetText(item.name)
   local qc = ITEM_QUALITY_COLORS[item.quality or 1]

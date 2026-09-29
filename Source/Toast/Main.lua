@@ -36,11 +36,9 @@ function Toast.Show(title, message, icon)
 end
 
 ---------------------------------------------------------------------------
--- Listen for ITEM_CAPTURED events
+-- Listen for ItemCaptured events
 ---------------------------------------------------------------------------
-local listener = { ReceiveEvent = function(_, eventName, itemID, itemName, link)
-  if eventName ~= CobysLinkepedia.Events.ItemCaptured then return end
-
+local listener = { ReceiveEvent = function(_, _, itemID, itemName)
   local _, _, _, _, icon = C_Item.GetItemInfoInstant(itemID)
   Toast.Show("Variant Captured", itemName, icon)
 end }

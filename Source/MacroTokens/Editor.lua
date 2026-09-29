@@ -398,8 +398,8 @@ function MacroTokens.FindInsertedName(text, cursor, inserted)
   return start
 end
 
--- The crafted rank a link carries, when a captured variant of the item has
--- that rank (reagent ranks are separate item ids and need no qualifier)
+-- The crafted or reagent rank a link carries, when a captured variant of the
+-- item has that rank
 local function LinkRank(link, itemID)
   if not C_TradeSkillUI then return nil end
   local ok, quality = pcall(C_TradeSkillUI.GetItemCraftedQualityByItemInfo, link)

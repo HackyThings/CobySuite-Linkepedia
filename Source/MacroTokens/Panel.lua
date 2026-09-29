@@ -601,7 +601,7 @@ local function Build()
 
   -- Legend: token forms in gold, what they link beside them in one column
   local previous
-  for i, entry in ipairs(LEGEND) do
+  for _, entry in ipairs(LEGEND) do
     local key = panel:CreateFontString(nil, "OVERLAY", Utilities.Fonts.DATA)
     if previous then
       key:SetPoint("TOPLEFT", previous, "BOTTOMLEFT", 0, -(LEGEND_ROW_HEIGHT - 11))

@@ -17,7 +17,7 @@ Guide.SECTIONS = {
     summary = "Every item your game client knows, built on your own computer",
     body = {
       "Coby's Linkepedia does not ship a list of items. It builds one from your game client, about 175,000 items, so it is never out of date and covers anything the game knows.",
-      "A build runs in the background for a few minutes and pauses by itself in combat. You can pause, resume or cancel it, and the search window's footer shows the progress, the rate and the time left. Shift-click Build for a faster scan that stutters while it runs.",
+      "A build runs in the background for a few minutes and pauses by itself in combat. You can pause, resume or cancel it, and the search window's footer shows the progress, the rate and the time left. Shift-click Build or Expand for a faster scan, or Ctrl+Shift-click for the fastest; both stutter while they run.",
     },
     try = {
       { "/lp build", "Build the database from scratch" },
@@ -46,7 +46,7 @@ Guide.SECTIONS = {
     icon = ICONS .. "UI_Chat",
     summary = "Type [ in chat and pick any item from a list",
     body = {
-      "In any chat box, type [ and the start of an item's name. A list opens beside the chat box with the best matches, each with its icon and its name in its quality color.",
+      "In any tab of the chat window or a pop-out whisper window, type [ and the start of an item's name. A list opens beside the chat box with the best matches, each with its icon and its name in its quality color.",
       "Up and Down move through the list, and Tab or a click puts the item's link where you typed. Enter still sends your message and Escape closes the list. It works in the middle of a message too, and the text after it stays put.",
     },
     try = {
@@ -88,7 +88,7 @@ Guide.SECTIONS = {
     summary = "Search, filter and browse the whole database",
     body = {
       "Open it from the minimap button, the addon compartment, a key binding or the command below. The search box filters as you type and the dropdowns beside it narrow by quality, type and expansion. The picker next to the box sets how words match: Exact as typed, All words in any order, or Any word. Every column sorts and resizes.",
-      "Click an item to see its details: the item ID, the link and its Wowhead address, each ready to copy. Shift-click links the item in chat, Ctrl-click tries it on in the dressing room, and right-click opens a menu.",
+      "Click an item to see its details: the item ID, and the link and its Wowhead address, each ready to copy. Shift-click links the item in chat, Ctrl-click tries it on in the dressing room, and right-click opens a menu.",
       "The tabs along the bottom hold the Variant Builder, your Favorites, the History of items you linked, and Stats about your database.",
     },
     try = {
@@ -155,11 +155,6 @@ end
 
 function Guide.Toggle()
   window:Toggle()
-end
-
--- Opens the guide on one section (a key from Guide.SECTIONS)
-function Guide.Open(key)
-  window:OpenSection(key)
 end
 
 CobysLinkepedia.Debug.Log("INIT", "Guide loaded")

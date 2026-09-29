@@ -28,7 +28,6 @@ local launcher = CobySuite_CobysLinkepedia.UI.CreateLauncher({
   buttonTooltipAnchor      = "ANCHOR_LEFT",
   compartmentTooltipAnchor = "ANCHOR_RIGHT",
 })
-Minimap_Module.Launcher = launcher
 
 -------------------------------------------------------------------------------
 -- Addon Compartment handlers (the TOC globals in Core.lua call these)

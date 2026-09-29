@@ -1,4 +1,4 @@
--- Detail Pane: always-visible panel showing item information
+-- Detail Pane: panel showing item information, beside every tab but Stats
 -- Shows empty state when no item is selected. Below the item's fields, the
 -- variants section lists its saved and captured variants (a scrolling
 -- item list of variant entries, Search/VariantActions.lua) and, for gear,
@@ -16,22 +16,20 @@ local currentItem = nil
 local cancelLinkLoad = nil   -- the pending link load; a newer selection cancels it
 
 -------------------------------------------------------------------------------
--- Helper: show/hide all detail content elements
+-- Helper: show all detail content elements
 -------------------------------------------------------------------------------
-local function SetContentVisible(f, visible)
-  local method = visible and "Show" or "Hide"
-  f.Icon[method](f.Icon)
-  f.ItemName[method](f.ItemName)
-  f.QualityText[method](f.QualityText)
-  f.Divider[method](f.Divider)
-  f.ItemIDLabel[method](f.ItemIDLabel)
-  f.LinkLabel[method](f.LinkLabel)
-  f.LinkBox[method](f.LinkBox)
-  f.WowheadLabel[method](f.WowheadLabel)
-  f.WowheadBox[method](f.WowheadBox)
-  f.VariantsLabel[method](f.VariantsLabel)
-  f.VariantsBox[method](f.VariantsBox)
-  if not visible then f.BuildButton:Hide() end
+local function ShowContent(f)
+  f.Icon:Show()
+  f.ItemName:Show()
+  f.QualityText:Show()
+  f.Divider:Show()
+  f.ItemIDLabel:Show()
+  f.LinkLabel:Show()
+  f.LinkBox:Show()
+  f.WowheadLabel:Show()
+  f.WowheadBox:Show()
+  f.VariantsLabel:Show()
+  f.VariantsBox:Show()
 end
 
 -------------------------------------------------------------------------------
@@ -241,7 +239,7 @@ function Search.ShowDetail(item)
   -- Hide empty state, show content
   detailFrame.EmptyText:Hide()
   detailFrame.LoadingText:Show()
-  SetContentVisible(detailFrame, true)
+  ShowContent(detailFrame)
 
   -- Populate with instant data
   local _, _, _, _, icon = C_Item.GetItemInfoInstant(item.itemID)

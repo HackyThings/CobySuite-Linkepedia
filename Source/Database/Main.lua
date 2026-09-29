@@ -1353,8 +1353,6 @@ function Database.NewBrowseBuilder(filters, query, mode)
     emitted = 0,              -- items in the output so far
     closing = 0,              -- slices of bucket closes run (each does some of the work)
     done = (#prefixes == 0),
-    query = (needle or anyTerms) and query or nil,
-    mode = hasQuery and (mode or "exact") or nil,
   }
 
   -- The bucket being walked: its lowered text, the walk's cursor and the
@@ -1673,9 +1671,9 @@ local function NameOf(itemID, handle)
 end
 
 -- Sort key for a results column, read straight from the record so a column
--- sort over the browse list never materialises 176K result tables. String
--- columns are lowercased to match SortResults on the text-search path. Every
--- column yields one type (number or string) so the comparator is total.
+-- sort over a whole list never materialises 176K result tables. String
+-- columns are lowercased, so text sorts ignore case. Every column yields
+-- one type (number or string) so the comparator is total.
 -- current: the handle was made at the database's present generation
 -- (Database.GetGeneration), so it still points at its own record and the
 -- item id is not read back. Every write that can move a record bumps the
@@ -1953,7 +1951,7 @@ end
 -------------------------------------------------------------------------------
 -- Reset and corrupt-data dialogs: named (Escape closes them through
 -- UISpecialFrames), built once at load rather than per open (never in
--- combat), their text refreshed each time one opens
+-- combat); the reset dialog's text is refreshed each time it opens
 -------------------------------------------------------------------------------
 -- Reset stops any scan itself, so the confirm needs no further check
 local resetPopup = CobysLinkepedia.Utilities.CreateDialogPopup({

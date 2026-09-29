@@ -295,17 +295,9 @@ function Autocomplete.InsertLink(s, link, itemID)
   end
 end
 
-function Autocomplete.IsActive()
-  return session ~= nil
-end
-
 -- The chat box the open session belongs to, for the dropdown's handlers
 function Autocomplete.GetActiveEditBox()
   return session and session.editBox
-end
-
-function Autocomplete.GetSessionRevision()
-  return session and session.revision
 end
 
 -------------------------------------------------------------------------------

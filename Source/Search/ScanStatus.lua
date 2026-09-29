@@ -6,7 +6,6 @@ local Scanner = CobysLinkepedia.Scanner
 local Utilities = CobysLinkepedia.Utilities
 local Debug = CobysLinkepedia.Debug
 
-local scanStatusFrame = nil
 local FOOTER_H = 60
 
 -------------------------------------------------------------------------------
@@ -238,7 +237,6 @@ function Search.InitScanStatus(window)
     self:UpdateDisplay()
   end)))
 
-  scanStatusFrame = f
   Search._scanStatusFrame = f
 end
 

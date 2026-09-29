@@ -245,7 +245,7 @@ end
 
 -- A send observer for the Chat Lab (Tests/ChatLab.lua). Set, it is called
 -- after each pre-send rewrite with { before, after, result, fromMacro,
--- chatType, channelTarget, time }; an error in it is swallowed. Unset (the
+-- chatType, time }; an error in it is swallowed. Unset (the
 -- normal case) the pre-send path is exactly LinkOutgoing and nothing is read
 -- or recorded.
 local sendObserver = nil
@@ -277,7 +277,6 @@ local function PreSend(editBox, fromMacro)
       result = result,
       fromMacro = fromMacro,
       chatType = editBox.GetChatType and Observable(editBox:GetChatType()) or nil,
-      channelTarget = editBox.GetChannelTarget and Observable(editBox:GetChannelTarget()) or nil,
       time = GetTime(),
     })
   end)

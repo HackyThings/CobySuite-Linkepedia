@@ -12,7 +12,10 @@
 --   local guide = CobySuite.UI.CreateGuideWindow({
 --     name       = "MyAddonGuideWindow",   -- optional global name; Escape closes a named guide
 --     title      = "My Addon Guide",
+--     icon       = "Interface\Icons\INV_Misc_Book_09",  -- optional, left of the title (CreateWindow)
 --     intro      = "A line above the sections.",           -- optional
+--     footer     = "Open this guide any time with /ma guide",   -- optional: a strip along the
+--                                                        -- bottom that doesn't scroll (color codes welcome)
 --     width = 580, height = 620,                           -- the defaults
 --     persist    = { svTable = function() return MY_STATE end, key = "guide" },  -- optional
 --     singleOpen = false,                  -- true: opening a section closes the others
@@ -22,7 +25,10 @@
 --         icon    = "Interface\\Icons\\INV_Misc_Spyglass_03",   -- a texture path or file ID,
 --         atlas   = "common-search-magnifyingglass",            -- or an atlas
 --         summary = "One line, shown open or closed",
---         body    = { "A paragraph.", "Another." },             -- a string or a list
+--         body    = { "A paragraph.", "Another." },             -- a string, a list, or a function
+--                                                               -- returning either, read again each
+--                                                               -- time the guide shows (text another
+--                                                               -- part of the addon supplies later)
 --         try     = { { "/ma show", "Open the search window" }, { "Shift-click", "Link it" } },
 --       },
 --     },
@@ -33,8 +39,8 @@
 --
 -- Everything is built at once, so create a guide out of combat (at load or
 -- login); showing and hiding it later is safe in combat. It is a CreateWindow
--- shell at DIALOG strata that the player can move and resize; the text
--- reflows with the width.
+-- shell in the MEDIUM layer, like every window, that the player can move and
+-- resize; the text reflows with the width.
 --
 --   local help = CobySuite.UI.CreateHelpButton(window, {
 --     onClick = function() guide:Toggle() end,
@@ -58,10 +64,79 @@ local GAP = 4                              -- between sections
 local BODY_LEFT = PAD + ICON_SIZE + PAD    -- body text lines up with the title
 local INSET_LEFT, INSET_RIGHT = 12, 32     -- the scroll area inside the window (its bar on the right)
 local TOP = 30                             -- below the title bar
+local BOTTOM = 12                          -- the scroll area's gap above the bottom edge
+local FOOTER_HEIGHT = 24                   -- the footer strip (opts.footer)
+local FOOTER_RIGHT = 26                    -- leaves the resize grip its corner
 -- Self-contained square buttons. The Options list's arrow is the right cap
 -- of a three-part bar and has no left border of its own.
 local ARROW_CLOSED = "ui-questtrackerbutton-expand-all"
 local ARROW_OPEN = "ui-questtrackerbutton-collapse-all"
+
+-- The objective tracker's plus (a closed section) and minus (an open one)
+UI.FOLD_ATLAS = { closed = ARROW_CLOSED, open = ARROW_OPEN }
+
+---------------------------------------------------------------------------
+-- CreateCollapsibleHeader(parent, opts): a section header as the guide's:
+-- a shaded button with an icon, a title, a one-line summary under it, and
+-- at its right edge the plus or minus, which brightens with the header
+-- under the mouse. The caller sets the texts, the icon (a texture, cropped
+-- by the caller, or an atlas) and its OnClick.
+--
+--   local h = CobySuite.UI.CreateCollapsibleHeader(parent, {
+--     height = 46, iconSize = 32, pad = 10,   -- the guide's (the defaults)
+--     titleFont = U.Fonts.TITLE,              -- the default
+--     titleY = -1, summaryGap = 3,            -- the title's offset from the icon's top; the gap under it
+--   })
+--   h.Icon, h.Title, h.Summary, h.Arrow, h.ArrowGlow
+--   h:SetOpen(open)                          -- the minus when open, else the plus
+---------------------------------------------------------------------------
+function UI.CreateCollapsibleHeader(parent, opts)
+  opts = opts or {}
+  local pad = opts.pad or PAD
+  local h = CreateFrame("Button", nil, parent)
+  h:SetHeight(opts.height or HEADER_HEIGHT)
+  local bg = h:CreateTexture(nil, "BACKGROUND")
+  bg:SetAllPoints()
+  local c = U.Colors.CONTENT_BG
+  bg:SetColorTexture(c[1], c[2], c[3], c[4])
+  UI.AddHoverHighlight(h)
+
+  local size = opts.iconSize or ICON_SIZE
+  h.Icon = h:CreateTexture(nil, "ARTWORK")
+  h.Icon:SetSize(size, size)
+  h.Icon:SetPoint("LEFT", pad, 0)
+
+  h.Arrow = h:CreateTexture(nil, "ARTWORK")
+  h.Arrow:SetPoint("RIGHT", -pad, 0)
+  h.Arrow:SetAtlas(ARROW_CLOSED, true)
+  -- Brightens with the header under the mouse, as the housing dashboard's does
+  h.ArrowGlow = h:CreateTexture(nil, "HIGHLIGHT")
+  h.ArrowGlow:SetAllPoints(h.Arrow)
+  h.ArrowGlow:SetBlendMode("ADD")
+  h.ArrowGlow:SetAlpha(0.3)
+  h.ArrowGlow:SetAtlas(ARROW_CLOSED)
+
+  h.Title = h:CreateFontString(nil, "OVERLAY", opts.titleFont or U.Fonts.TITLE)
+  h.Title:SetPoint("TOPLEFT", h.Icon, "TOPRIGHT", pad, opts.titleY or -1)
+  h.Title:SetPoint("RIGHT", h.Arrow, "LEFT", -pad, 0)
+  h.Title:SetJustifyH("LEFT")
+  h.Title:SetWordWrap(false)
+
+  h.Summary = h:CreateFontString(nil, "OVERLAY", U.Fonts.DATA)
+  h.Summary:SetPoint("TOPLEFT", h.Title, "BOTTOMLEFT", 0, -(opts.summaryGap or 3))
+  h.Summary:SetPoint("RIGHT", h.Arrow, "LEFT", -pad, 0)
+  h.Summary:SetJustifyH("LEFT")
+  h.Summary:SetWordWrap(false)
+  local gray = U.Colors.LABEL_GRAY
+  h.Summary:SetTextColor(gray[1], gray[2], gray[3])
+
+  function h:SetOpen(open)
+    local atlas = open and ARROW_OPEN or ARROW_CLOSED
+    self.Arrow:SetAtlas(atlas, true)
+    self.ArrowGlow:SetAtlas(atlas)
+  end
+  return h
+end
 
 ---------------------------------------------------------------------------
 -- CreateHelpButton
@@ -108,57 +183,35 @@ end
 local GuideMixin = {}
 
 local function Paragraphs(body)
+  if type(body) == "function" then
+    local ok, value = pcall(body)
+    body = ok and value or ""
+  end
   if type(body) == "table" then return table.concat(body, "\n\n") end
   return body or ""
+end
+
+-- Reads every function body again (on show, before the layout measures it)
+function GuideMixin:RefreshBodies()
+  for _, s in ipairs(self.sections) do
+    if type(s.def.body) == "function" then s.text:SetText(Paragraphs(s.def.body)) end
+  end
 end
 
 local function BuildSection(guide, def)
   local child = guide.Child
   local s = { key = def.key, def = def, expanded = false }
 
-  local header = CreateFrame("Button", nil, child)
-  header:SetHeight(HEADER_HEIGHT)
-  local bg = header:CreateTexture(nil, "BACKGROUND")
-  bg:SetAllPoints()
-  local c = U.Colors.CONTENT_BG
-  bg:SetColorTexture(c[1], c[2], c[3], c[4])
-  UI.AddHoverHighlight(header)
-
-  local icon = header:CreateTexture(nil, "ARTWORK")
-  icon:SetSize(ICON_SIZE, ICON_SIZE)
-  icon:SetPoint("LEFT", PAD, 0)
+  local header = UI.CreateCollapsibleHeader(child)
+  local icon, arrow, title, summary = header.Icon, header.Arrow, header.Title, header.Summary
   if def.atlas then
     icon:SetAtlas(def.atlas)
   else
     icon:SetTexture(def.icon)
     icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)   -- the icon border
   end
-
-  local arrow = header:CreateTexture(nil, "ARTWORK")
-  arrow:SetPoint("RIGHT", -PAD, 0)
-  arrow:SetAtlas(ARROW_CLOSED, true)
-  -- Brightens with the header under the mouse, as the housing dashboard's does
-  local arrowGlow = header:CreateTexture(nil, "HIGHLIGHT")
-  arrowGlow:SetAllPoints(arrow)
-  arrowGlow:SetBlendMode("ADD")
-  arrowGlow:SetAlpha(0.3)
-  arrowGlow:SetAtlas(ARROW_CLOSED)
-  s.arrowGlow = arrowGlow
-
-  local title = header:CreateFontString(nil, "OVERLAY", U.Fonts.TITLE)
-  title:SetPoint("TOPLEFT", icon, "TOPRIGHT", PAD, -1)
-  title:SetPoint("RIGHT", arrow, "LEFT", -PAD, 0)
-  title:SetJustifyH("LEFT")
-  title:SetWordWrap(false)
+  s.arrowGlow = header.ArrowGlow
   title:SetText(def.title or def.key)
-
-  local summary = header:CreateFontString(nil, "OVERLAY", U.Fonts.DATA)
-  summary:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -3)
-  summary:SetPoint("RIGHT", arrow, "LEFT", -PAD, 0)
-  summary:SetJustifyH("LEFT")
-  summary:SetWordWrap(false)
-  local gray = U.Colors.LABEL_GRAY
-  summary:SetTextColor(gray[1], gray[2], gray[3])
   summary:SetText(def.summary or "")
 
   header:SetScript("OnClick", function()
@@ -226,7 +279,12 @@ function GuideMixin:Relayout()
   end
   self.Scroll:ClearAllPoints()
   self.Scroll:SetPoint("TOPLEFT", INSET_LEFT, -top)
-  self.Scroll:SetPoint("BOTTOMRIGHT", -INSET_RIGHT, 12)
+  local bottom = BOTTOM
+  if self.Footer then
+    self.Footer.Text:SetWidth(self:GetWidth() - INSET_LEFT - FOOTER_RIGHT - 2 * PAD)
+    bottom = BOTTOM + FOOTER_HEIGHT + 6
+  end
+  self.Scroll:SetPoint("BOTTOMRIGHT", -INSET_RIGHT, bottom)
   self.Child:SetWidth(width)
 
   local y = 0
@@ -292,9 +350,9 @@ function UI.CreateGuideWindow(opts)
   local f = UI.CreateWindow({
     name         = opts.name,
     title        = opts.title,
+    icon         = opts.icon,
     width        = opts.width or 580,
     height       = opts.height or 620,
-    strata       = "DIALOG",
     resizable    = { minWidth = 440, minHeight = 320, maxWidth = 1000, maxHeight = 1100 },
     escapeCloses = opts.name ~= nil,
     persist      = opts.persist,
@@ -310,6 +368,26 @@ function UI.CreateGuideWindow(opts)
     intro:SetSpacing(2)
     intro:SetText(opts.intro)
     f.Intro = intro
+  end
+
+  if opts.footer then
+    local footer = CreateFrame("Frame", nil, f)
+    footer:SetPoint("BOTTOMLEFT", INSET_LEFT, BOTTOM - 4)
+    footer:SetPoint("BOTTOMRIGHT", -FOOTER_RIGHT, BOTTOM - 4)
+    footer:SetHeight(FOOTER_HEIGHT)
+    local bg = footer:CreateTexture(nil, "BACKGROUND")
+    bg:SetAllPoints()
+    local c = U.Colors.CONTENT_BG
+    bg:SetColorTexture(c[1], c[2], c[3], c[4])
+    local text = footer:CreateFontString(nil, "OVERLAY", U.Fonts.SMALL)
+    text:SetPoint("CENTER")
+    text:SetJustifyH("CENTER")
+    text:SetWordWrap(false)
+    local gray = U.Colors.LABEL_GRAY
+    text:SetTextColor(gray[1], gray[2], gray[3])
+    text:SetText(opts.footer)
+    footer.Text = text
+    f.Footer = footer
   end
 
   local scroll = CreateFrame("ScrollFrame", nil, f, "UIPanelScrollFrameTemplate")
@@ -339,7 +417,178 @@ function UI.CreateGuideWindow(opts)
 
   f:RestoreState()
   f:SetScript("OnSizeChanged", function(self) self:Relayout() end)
-  f:HookScript("OnShow", function(self) self:Relayout() end)
+  f:HookScript("OnShow", function(self)
+    self:RefreshBodies()
+    self:Relayout()
+  end)
   f:Relayout()
   return f
+end
+
+---------------------------------------------------------------------------
+-- CobySuite.UI.WhatsNew / CreateWhatsNewWindow: an addon's changelog in the
+-- guide's window, one collapsible section per version, and what its login
+-- shows: a fresh install opens the addon's guide (onFirstRun), an update
+-- opens this window with every version since the last one run, and anything
+-- else shows nothing. Both wait for combat to end.
+--
+--   local whatsNew = CobySuite.UI.CreateWhatsNewWindow({
+--     name    = "MyAddonChangelogWindow",
+--     title   = "My Addon: What's New",
+--     icon    = "Interface\\Icons\\INV_Misc_Book_09",   -- the window's and each version's default icon
+--     intro   = "What changed in each version, newest first.",
+--     footer  = "Open this window any time with /ma changelog",   -- optional
+--     entries = MyAddon.Data.Changelog,   -- newest first: { version, title, date, icon, new, changed, fixed }
+--     version = MyAddon.VERSION,          -- the TOC's
+--     state   = function() return MY_ADDON_WINDOW_STATE end,   -- saved table: holds lastVersion and the window's place
+--     onFirstRun = function() MyAddon.Guide.Show() end,          -- optional: a fresh install
+--     combatMessage = function(text) MyAddon.Message(text) end, -- optional: when asked for in combat before it is built
+--     onShow = function(what) end,        -- optional: "guide" or "changelog", at login
+--   })
+--   whatsNew:OnLogin()        -- at PLAYER_LOGIN
+--   whatsNew:Toggle()         -- a slash command
+--   whatsNew:ShowVersions({ "v1.2.0" })
+--
+-- An entry's lines are strings a player reads: "Feature: what it does", the
+-- part before the first ": " in the help blue, and {Alt+D} or {/cmd} for a
+-- key or command in the help gold. A date shows "Released <date>", none
+-- "Beta". The window is built at login, out of combat.
+---------------------------------------------------------------------------
+UI.WhatsNew = {}
+local WhatsNew = UI.WhatsNew
+local SHOW_DELAY = 3   -- seconds after login, so the window opens over a settled screen
+local BULLET = "\226\128\162 "
+local KINDS = {
+  { key = "new", label = "New" },
+  { key = "changed", label = "Changed" },
+  { key = "fixed", label = "Fixed" },
+}
+
+function WhatsNew.SectionKey(entry)
+  return "v" .. tostring(entry.version)
+end
+
+-- One line as shown: a bullet, the lead before ": " in blue, {keys} in gold
+function WhatsNew.Line(text)
+  local lead, rest = tostring(text):match("^([^:{]+): (.*)$")
+  local function Keys(s)
+    return (s:gsub("{(.-)}", function(key) return U.WrapColor(U.Colors.HELP_COMMAND, key) end))
+  end
+  if lead then return BULLET .. U.WrapColor(U.Colors.HELP_SECTION, lead) .. ": " .. Keys(rest) end
+  return BULLET .. Keys(tostring(text))
+end
+
+-- Decide(state, version, entries): what login shows, recording version as
+-- state.lastVersion. "guide" on a fresh install (no lastVersion); "changelog"
+-- and the section keys of every entry newer than the last version run and not
+-- newer than this one (in the entries' order) after an update; else nil.
+function WhatsNew.Decide(state, version, entries)
+  if type(state) ~= "table" or type(version) ~= "string" then return nil end
+  local last = state.lastVersion
+  state.lastVersion = version
+  if type(last) ~= "string" then return "guide" end
+  if U.CompareVersions(version, last) <= 0 then return nil end
+  local keys = {}
+  for _, entry in ipairs(entries or {}) do
+    if U.CompareVersions(entry.version, last) > 0 and U.CompareVersions(entry.version, version) <= 0 then
+      keys[#keys + 1] = WhatsNew.SectionKey(entry)
+    end
+  end
+  if #keys == 0 then return nil end
+  return "changelog", keys
+end
+
+-- The guide window's sections for the entries: a header per version (its
+-- title, the release date or "Beta") and a paragraph per kind of change, a
+-- gold heading over its bulleted lines; icon is the default section icon
+function WhatsNew.Sections(entries, icon)
+  local sections = {}
+  for _, entry in ipairs(entries or {}) do
+    local body = {}
+    for _, kind in ipairs(KINDS) do
+      local lines = entry[kind.key]
+      if type(lines) == "table" and #lines > 0 then
+        local text = { U.WrapColor(U.Colors.TEXT_GOLD, kind.label) }
+        for _, line in ipairs(lines) do text[#text + 1] = WhatsNew.Line(line) end
+        body[#body + 1] = table.concat(text, "\n")
+      end
+    end
+    local title = "Version " .. tostring(entry.version)
+    if entry.title then title = title .. ": " .. entry.title end
+    sections[#sections + 1] = {
+      key = WhatsNew.SectionKey(entry),
+      title = title,
+      icon = entry.icon or icon,
+      summary = entry.date and ("Released " .. entry.date) or "Beta",
+      body = body,
+    }
+  end
+  return sections
+end
+
+-- The client calls login makes, as seams a test can script
+WhatsNew.seams = {
+  After = function(delay, fn) C_Timer.After(delay, fn) end,
+  InCombat = function() return InCombatLockdown() end,
+  OnceEvent = function(event, fn) EventUtil.RegisterOnceFrameEventAndCallback(event, fn) end,
+}
+
+local WhatsNewMixin = {}
+
+-- The window, built once and out of combat; nil when it can't be built yet
+function WhatsNewMixin:Build()
+  if self.window then return self.window end
+  if InCombatLockdown() then return nil end
+  local opts = self.opts
+  self.window = UI.CreateGuideWindow({
+    name = opts.name, title = opts.title, icon = opts.icon, intro = opts.intro, footer = opts.footer,
+    sections = WhatsNew.Sections(opts.entries, opts.icon),
+    persist = opts.state and { svTable = opts.state, key = opts.persistKey or "changelogWindow" } or nil,
+  })
+  return self.window
+end
+
+function WhatsNewMixin:Toggle()
+  local w = self:Build()
+  if w then
+    w:Toggle()
+  elseif self.opts.combatMessage then
+    self.opts.combatMessage("The changelog opens when combat ends.")
+  end
+end
+
+-- Opens the window with exactly these versions open, scrolled to the first
+function WhatsNewMixin:ShowVersions(keys)
+  local w = self:Build()
+  if not w or not keys or not keys[1] then return end
+  for _, section in ipairs(w.sections) do w:SetExpanded(section.key, false) end
+  for _, key in ipairs(keys) do w:SetExpanded(key, true) end
+  w:OpenSection(keys[1])
+end
+
+function WhatsNewMixin:OnLogin()
+  self:Build()
+  local opts = self.opts
+  local what, keys = WhatsNew.Decide(opts.state and opts.state(), opts.version, opts.entries)
+  if not what then return end
+  if opts.onShow then opts.onShow(what) end
+  local function Show()
+    if what == "guide" then
+      if opts.onFirstRun then opts.onFirstRun() end
+    else
+      self:ShowVersions(keys)
+    end
+  end
+  local seams = WhatsNew.seams
+  seams.After(SHOW_DELAY, function()
+    if seams.InCombat() then
+      seams.OnceEvent("PLAYER_REGEN_ENABLED", Show)
+    else
+      Show()
+    end
+  end)
+end
+
+function UI.CreateWhatsNewWindow(opts)
+  return setmetatable({ opts = opts or {} }, { __index = WhatsNewMixin })
 end

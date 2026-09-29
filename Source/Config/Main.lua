@@ -66,7 +66,6 @@ Config.IsValidOption  = base.IsValidOption
 Config.CheckValue     = base.CheckValue
 Config.Get            = base.Get
 Config.Set            = base.Set
-Config.Reset          = base.Reset
 
 ---------------------------------------------------------------------------
 -- InitializeData: wraps base with addon-specific SavedVariable init

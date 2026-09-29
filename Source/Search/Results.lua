@@ -84,7 +84,6 @@ local function NewBase()
     sig = nil,                                 -- filters, and query with its search mode, it was built for
     generation = nil,                          -- database generation the base was built from
     baseIDs = nil, baseEntries = nil, n = 0,   -- quality descending, then name
-    groupBounds = nil,                         -- {from, to} of each quality group in the base
     nameOrder = nil,                           -- base positions in name order over every quality
   }
 end
@@ -248,12 +247,11 @@ local function FullEnrich(item)
   -- Stored values first (zero API calls for entries the scan filled in)
   local expID = item._expansionID
   if not expID or expID < 0 then
-    local _, _, _, itemLevel, reqLevel, _, _, _, equipLoc, _, _, _, _, _, expansionID = C_Item.GetItemInfo(item.itemID)
+    local _, _, _, itemLevel, reqLevel, _, _, _, _, _, _, _, _, _, expansionID = C_Item.GetItemInfo(item.itemID)
     if expansionID then
       item.itemLevel = itemLevel or item.itemLevel or 0
       item.reqLevel = reqLevel or item.reqLevel or 0
       item._expansionID = expansionID
-      item._equipLoc = equipLoc or ""
       expID = expansionID
     end
   end
@@ -589,12 +587,8 @@ function Search.InitResults(window)
   emptyLabel:SetTextColor(gray[1], gray[2], gray[3])
   emptyLabel:Hide()
 
-  window._scrollBox = scrollBox
-  window._dataProvider = dataProvider
-
   -- Closing the window lets a search's list go (Search.ReleaseSearchList)
   window:HookScript("OnHide", function() Search.ReleaseSearchList() end)
-  Search._tableHeader = tableHeader
 
   EnsureOverlay()
 end
@@ -937,8 +931,8 @@ local function FinishBuild()
     local base = bases[slot]
     builder = nil
     base.valid = true
-    base.baseIDs, base.baseEntries, base.n, base.groupBounds, base.nameOrder =
-      result[1], result[2], result[3], result[4], result[5]
+    base.baseIDs, base.baseEntries, base.n, base.nameOrder =
+      result[1], result[2], result[3], result[5]
     base.sig = buildSig
     buildSig = nil
     -- The generation from when the walk started, not now: a write that landed
@@ -960,7 +954,7 @@ local function StartBuild(slot, sig, owner)
   local serial = buildSerial
   local base = bases[slot]
   base.valid = false
-  base.baseIDs, base.baseEntries, base.n, base.groupBounds, base.nameOrder = nil, nil, 0, nil, nil
+  base.baseIDs, base.baseEntries, base.n, base.nameOrder = nil, nil, 0, nil
   buildSig, buildSlot = sig, slot
   buildGeneration = Database.GetGeneration()
   buildOwner = owner
@@ -1023,10 +1017,9 @@ end
 -- What the list holds right now, for the Browse suite: whether a build is
 -- running, the rows presented and the rows the ScrollBox was handed, the
 -- presented list's slot and sort, the sort asked for, and the work in
--- flight: its phase ("walk", "finish" or "sort", nil when idle), the walk's
--- progress (0 to 1), a count of walk steps and job slices run so far (it
--- stands still while work waits), who owns the build, whether it waits for
--- combat, and whether a system refresh waits for combat to end
+-- flight: its phase ("walk", "finish" or "sort", nil when idle), a count of
+-- walk steps and job slices run so far (it stands still while work waits),
+-- who owns the build, and whether a system refresh waits for combat to end
 function Search.GetListState()
   local provider = scrollBox and scrollBox:GetDataProvider()
   local slot
@@ -1035,14 +1028,14 @@ function Search.GetListState()
   elseif presented.base and presented.base == bases.text then
     slot = "text"
   end
-  local phase, owner, waits, generation
+  local phase, owner
   if jobActive then
     phase = jobKind
   elseif builder then
     phase = "walk"
   end
   if builder then
-    owner, waits, generation = buildOwner, buildWaitsForCombat, buildGeneration
+    owner = buildOwner
   end
   return {
     building = builder ~= nil or jobActive,
@@ -1054,12 +1047,9 @@ function Search.GetListState()
     sortColumn = sortColumn,
     sortDir = sortDir,
     phase = phase,
-    progress = builder and not jobActive and builder:GetProgress() or nil,
     slices = workSlices,
     owner = owner,
-    waitsForCombat = waits,
     pendingSystemRefresh = pendingSystemRefresh,
-    generation = generation,
   }
 end
 
@@ -1287,7 +1277,7 @@ function Search.RunPerformance(onStatus, onDone)
   Add("browse finish", function()
     local total, worst, slices, finished = TimeJob(function(pause) return { state.builder:Finish(true, pause) } end)
     state.builder = nil
-    state.base = { baseIDs = finished[1], baseEntries = finished[2], n = finished[3], groupBounds = finished[4],
+    state.base = { baseIDs = finished[1], baseEntries = finished[2], n = finished[3],
       nameOrder = finished[5], generation = state.generation }
     Spread(worst, "Browse finish", "%.1f ms over %d slices, largest %.1f ms, %d entries", total, slices, worst, finished[3])
   end)

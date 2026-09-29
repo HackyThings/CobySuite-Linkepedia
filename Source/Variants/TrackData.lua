@@ -3,10 +3,9 @@
 -- each track's highest rank are never stored here; the client reads them back
 -- from the built links.
 --
--- From the 12.1.0.69814 client's own tables (wago.tools: ItemBonus rows of
--- type 34 give a bonus ID's track group and track name string, and
--- ItemBonusListGroupEntry gives its rank), with season names from Raidbots'
--- seasons.json. A group's list runs past the highest rank the client names
+-- From the 12.1.0.69814 client's own tables (ItemBonus rows of type 34 give
+-- a bonus ID's track group and track name string, and ItemBonusListGroupEntry
+-- gives its rank), with the seasons named as the game names them. A group's list runs past the highest rank the client names
 -- for a track: every Midnight track lists 8 where the client says 6, and
 -- Myth (both seasons) and Season 1 Hero list 9. Those ranks have no upgrade
 -- cost in the client's tables but are real (Myth 9/6); the builder offers
