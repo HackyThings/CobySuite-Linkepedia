@@ -421,7 +421,7 @@ end
 local function InitRow(row, pos)
   if not row._initialized then
     -- Highlight
-    row.Highlight = CobySuite_CobysLinkepedia.UI.AddHoverHighlight(row)
+    CobySuite_CobysLinkepedia.UI.AddHoverHighlight(row)
 
     row:RegisterForClicks("LeftButtonUp", "RightButtonUp")
 
@@ -515,7 +515,7 @@ function Search.InitResults(window)
   -- TableHeader: below the top row (search box, mode picker and filters),
   -- where every tab's content starts, left of the detail pane
   tableHeader = CreateFrame("Frame", nil, window)
-  Mixin(tableHeader, CobysLinkepediaTableHeaderMixin)
+  Mixin(tableHeader, CobySuite_CobysLinkepedia.UI.TableHeaderMixin)
   tableHeader:SetPoint("TOPLEFT", 8, -58)
   -- The right side follows the detail pane's width (Search.ContentEdge)
   tableHeader:SetPoint("TOPRIGHT", Search.ContentEdge, "TOPRIGHT", 0, -58)
@@ -961,8 +961,8 @@ local function StartBuild(slot, sig, owner)
   -- Combat: the browse walk halts by this addon's rules, and so does a list
   -- nobody asked for this moment (a system refresh). A search the player
   -- typed runs at the same per-frame budget. The walk's OnUpdate and the
-  -- finish read this flag, so a user refresh that takes the build over
-  -- (RefreshResults) lets it run.
+  -- finish read this flag, so a user refresh that takes a text build over
+  -- (RefreshResults) lets it run; a browse walk still waits.
   buildWaitsForCombat = slot == "browse" or owner == "system"
   ShowEmptyList()
 
@@ -1099,8 +1099,9 @@ function Search.RefreshResults(query, owner)
   -- generation, is already running (the window was closed and reopened
   -- mid-build, or a filter clear with nothing set): keep it and its progress
   -- rather than starting over. A build begun before a write is not kept; it
-  -- may miss the write. The user taking over a system build lets it run in
-  -- combat, as a build of their own would.
+  -- may miss the write. The user taking over a system build gives it the
+  -- user's combat rule: a text search then runs in combat, and the browse
+  -- walk still waits.
   if builder and buildSig == sig and buildGeneration == Database.GetGeneration() then
     if owner == "user" and buildOwner == "system" then
       buildOwner = "user"
@@ -1562,7 +1563,7 @@ function Search.RunPerformance(onStatus, onDone)
 end
 
 -------------------------------------------------------------------------------
--- Select an item (show in detail pane; the pane is always visible)
+-- Select an item (show it in the detail pane, beside every tab but Stats)
 -------------------------------------------------------------------------------
 function Search.SelectItem(item)
   if Search.ShowDetail then
@@ -1615,8 +1616,7 @@ end
 -------------------------------------------------------------------------------
 -- Auto-refresh on database changes
 -------------------------------------------------------------------------------
-local dbUpdateListener = { ReceiveEvent = function(_, eventName)
-  if eventName ~= CobysLinkepedia.Events.DatabaseUpdated then return end
+local dbUpdateListener = { ReceiveEvent = function()
   -- A build or sort in flight works from the database as it was (the walk
   -- holds the item table it began on, and its finish would fill a base
   -- replaced below), so it is stood down first, before the combat check in

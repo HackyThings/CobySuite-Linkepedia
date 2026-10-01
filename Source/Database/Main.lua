@@ -4,13 +4,13 @@
 -- a record is eight \31-separated fields:
 --   id, name, quality, classID, subClassID, itemLevel, reqLevel, expansionID
 -- That string is what the SavedVariable holds on disk and what this module
--- searches, so login parses nothing and logout serialises nothing. The
+-- searches, so login builds no table per item and logout serialises
+-- nothing. The
 -- earlier form expanded every record into a Lua table at login (176K tables,
 -- tens of MB and a visible pause) and walked those tables for every query;
 -- searching the strings is a handful of C-level string.find calls per bucket
--- instead. Records written before this form carry a ninth field, the icon;
--- the record pattern reads eight, so they load unchanged and lose the icon
--- when next rewritten. Rows take icons from C_Item.GetItemInfoInstant.
+-- instead. Records hold no icon: rows take icons from
+-- C_Item.GetItemInfoInstant.
 --
 -- Beside the strings the module keeps, rebuilt by Load():
 --   idToPrefix[itemID] = prefix   O(1) GetItem, Remove and duplicate detection
@@ -50,8 +50,6 @@ local SKIP = "%-?%d+"
 local RECORD = "^(%d+)\31()" .. NAME .. "()\31" .. NUM .. "\31" .. NUM .. "\31" .. NUM .. "\31" .. NUM .. "\31" .. NUM .. "\31" .. NUM
 -- id and the position just past the eighth field, for the shape check at load
 local RECORD_SHAPE = "^(%d+)\31[^\30\31]*\31" .. SKIP .. "\31" .. SKIP .. "\31" .. SKIP .. "\31" .. SKIP .. "\31" .. SKIP .. "\31" .. SKIP .. "()"
--- the old ninth field (icon), tolerated only when it is the record's last bytes
-local ICON_TAIL = "^\31%-?%d+()"
 -- id, name, quality (unfiltered browse) / id, name, quality, classID, expansionID (filtered)
 local BROWSE_MIN  = "^(%d+)\31" .. NAME .. "\31" .. NUM
 local BROWSE_FULL = "^(%d+)\31" .. NAME .. "\31" .. NUM .. "\31" .. NUM .. "\31" .. SKIP .. "\31" .. SKIP .. "\31" .. SKIP .. "\31" .. NUM
@@ -265,17 +263,13 @@ local function PassesFilters(id, q, c, e, fType, fQuality, fExpansion)
 end
 
 -- The id of the record occupying [start, stop] when that record is exactly
--- eight numeric-and-name fields (plus, at most, the old trailing icon field)
--- with a canonical positive id; nil for anything else. A start anchor alone
+-- eight numeric-and-name fields with a canonical positive id; nil for anything else. A start anchor alone
 -- would accept a numeric field followed by junk, and an id with a leading
 -- zero would count but never be found by FindRecord.
 local function ValidRecordID(bucket, start, stop)
   local idStr, after = strmatch(bucket, RECORD_SHAPE, start)
   if not idStr then return nil end
-  if after ~= stop + 1 then
-    after = strmatch(bucket, ICON_TAIL, after)
-    if after ~= stop + 1 then return nil end
-  end
+  if after ~= stop + 1 then return nil end
   local id = tonumber(idStr)
   if not id or id < 1 or tostring(id) ~= idStr then return nil end
   return id
@@ -315,9 +309,9 @@ end
 -------------------------------------------------------------------------------
 -- Storage lifecycle
 --
--- Everything outside this file goes through the API below, so the storage
--- layout can change without touching Config, Core, the logger, the scanner
--- or the stats tab.
+-- Everything outside this file reaches the item buckets through the API
+-- below, so their layout can change without touching any other module.
+-- scanState is shared with the scanner and Core.
 -------------------------------------------------------------------------------
 
 -- Creates the SavedVariable and its sub-tables if this is a fresh install (or
@@ -334,8 +328,9 @@ function Database.EnsureStorage()
 end
 
 -- Shape check run before anything reads the database. Returns true, or false
--- and a reason. The recovery path that acts on a failure is Core's
--- corrupt-data dialog.
+-- and a reason. On a failure Core's ADDON_LOADED handler starts an empty
+-- database, and at login shows the corrupt-data dialog below, which offers a
+-- rebuild.
 function Database.ValidateStorage()
   local db = COBYS_LINKEPEDIA_DB
   if db == nil then return true end
@@ -394,9 +389,9 @@ local function DropDamagedVariants(list)
 end
 
 -- Indexes the bucket strings: fills idToPrefix and the prefix list, counts
--- items. Allocates nothing per item beyond the index entry. A record that
--- is not exactly the eight-field shape ending at the record boundary (the
--- old trailing icon field excepted), one whose id is not a canonical
+-- items. Builds no table per item beyond the index entry. A record that
+-- is not exactly the eight-field shape ending at the record boundary, one
+-- whose id is not a canonical
 -- positive integer, a second record for an id already seen, or a bucket
 -- that is not a string is dropped, and a bucket that lost records is
 -- rewritten without them, once. Called at ADDON_LOADED and by
@@ -466,22 +461,15 @@ function Database.Load()
   local db = COBYS_LINKEPEDIA_DB
   if type(db) == "table" then
     if type(db.variants) == "table" then
-      local oldForm, damaged = 0, 0
+      local damaged = 0
       for itemID, list in pairs(db.variants) do
         if type(list) ~= "table" then
           db.variants[itemID] = nil
           Warn("Dropped the variant entry for %s: not a table", tostring(itemID))
-        elseif type(list[1]) == "string" then
-          -- The pre-release form kept bare link strings; no migration is owed
-          db.variants[itemID] = nil
-          oldForm = oldForm + 1
         else
           -- Before the trim below, whose sort compares these fields
           damaged = damaged + DropDamagedVariants(list)
         end
-      end
-      if oldForm > 0 then
-        Warn("Dropped the variant lists of %d items stored in the old link-string form", oldForm)
       end
       if damaged > 0 then
         Warn("Dropped %d damaged variant records", damaged)
@@ -569,7 +557,9 @@ end
 -- Empties items, variants, the recipe index and scan state. Any scan (the
 -- recipe scan too) is stopped first so nothing refills the emptied tables,
 -- capture forgets the links it handled this session, and one DatabaseUpdated
--- follows the replacement (the stop itself fires nothing). The reset and
+-- follows the replacement (the stop itself fires nothing), then one
+-- RecipeIndexUpdated for the emptied recipe index (the Variants tab and the
+-- reagent cache in Search/VariantActions.lua listen to it). The reset and
 -- corrupt-data dialogs go through here. Favorites, history and saved
 -- variants live in COBYS_LINKEPEDIA_STATE and are untouched.
 function Database.Reset()
@@ -595,6 +585,7 @@ function Database.Reset()
   variantEpoch = variantEpoch + 1
   Log("Database reset")
   CobysLinkepedia.EventBus:Fire(CobysLinkepedia.Events.DatabaseUpdated)
+  CobysLinkepedia.EventBus:Fire(CobysLinkepedia.Events.RecipeIndexUpdated)
 end
 
 -------------------------------------------------------------------------------
@@ -671,7 +662,7 @@ local resolving = setmetatable({}, { __mode = "k" })   -- records waiting on an 
 
 -- A secret value is as good as none here
 local function Plain(value)
-  if issecretvalue and issecretvalue(value) then return nil end
+  if CobySuite_CobysLinkepedia.Utilities.IsSecret(value) then return nil end
   return value
 end
 
@@ -696,18 +687,14 @@ local function ReadVariantMeta(v)
   local changed = false
   if v.ilvl == nil then
     local ok, level
-    if C_Item.GetDetailedItemLevelInfo then
-      ok, level = pcall(C_Item.GetDetailedItemLevelInfo, v.link)
-    else
-      ok, level = pcall(function() return (select(4, C_Item.GetItemInfo(v.link))) end)
-    end
+    ok, level = pcall(C_Item.GetDetailedItemLevelInfo, v.link)
     level = ok and Plain(level) or nil
     if type(level) == "number" and level > 0 then
       v.ilvl = level
       changed = true
     end
   end
-  if v.rank == nil and C_TradeSkillUI then
+  if v.rank == nil then
     local ok, quality = pcall(C_TradeSkillUI.GetItemCraftedQualityByItemInfo, v.link)
     quality = ok and Plain(quality) or nil
     if type(quality) ~= "number" then
@@ -785,7 +772,8 @@ local function EvictOneAnywhere(variants)
   if #victimList == 0 then variants[victimID] = nil end
 end
 
--- Keeps only the table records of a list, in order. Returns how many.
+-- Keeps the table records of a list, in order, minus any that drop (an
+-- optional set) names. Returns how many.
 local function CompactList(list, drop)
   local kept = 0
   for i = 1, #list do
@@ -1042,8 +1030,9 @@ end
 -- case-insensitive find over the name's own bucket: the name field is the
 -- only field bounded by \31 on both sides that can hold letters, and a name
 -- without letters is confirmed against the record before it is returned.
--- It runs at send for each [bracketed] name and ${n=...} token, and for each
--- ${n=...} token when the macro panel refreshes.
+-- It runs at send for each [bracketed] name; ${n=...} tokens reach it through
+-- Linkify.ResolveTokenItem (send, the macro panel and editor), which keeps
+-- each name's answer until the database generation moves.
 function Database.GetExact(name)
   if type(name) ~= "string" or name == "" then return nil end
   if strfind(name, "[\30\31]") then return nil end
@@ -1052,7 +1041,7 @@ function Database.GetExact(name)
   if not bucket then return nil end
 
   -- Several ids can share a name (quest versions, reissued gear): the
-  -- highest quality wins, then the lowest id, the order Search ranks by
+  -- highest quality wins, then the lowest id
   local pattern = FS .. CasePattern(name) .. FS
   local best
   local init = 1
@@ -1349,7 +1338,7 @@ function Database.NewBrowseBuilder(filters, query, mode)
   local builder = {
     total = #prefixes,        -- buckets to walk
     position = 0,             -- buckets opened so far
-    visited = 0,              -- records examined (the whole walk, for /lp perf)
+    visited = 0,              -- records examined (the whole walk, for the Browse suite)
     emitted = 0,              -- items in the output so far
     closing = 0,              -- slices of bucket closes run (each does some of the work)
     done = (#prefixes == 0),

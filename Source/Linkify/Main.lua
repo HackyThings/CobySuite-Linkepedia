@@ -258,7 +258,7 @@ end
 
 -- A text for the observer; a secret value is never kept as it is
 local function Observable(value)
-  if issecretvalue and issecretvalue(value) then return "(secret)" end
+  if CobySuite_CobysLinkepedia.Utilities.IsSecret(value) then return "(secret)" end
   return value
 end
 
@@ -326,7 +326,9 @@ function Linkify.FindMacroEditBox()
 end
 
 -- Hooks the macro box once. editBox defaults to FindMacroEditBox(); the
--- Linkify suite passes a fake. Returns whether a box is hooked.
+-- Linkify suite passes a fake. Returns whether a box is hooked. The hooked
+-- box is kept in Linkify._macroBox for the Taint suite: hooking replaces its
+-- OnPreSendText, so FindMacroEditBox no longer recognises it afterwards.
 function Linkify.InstallMacroHook(editBox)
   if Linkify._macroHookInstalled then return true end
   editBox = editBox or Linkify.FindMacroEditBox()
@@ -338,6 +340,7 @@ function Linkify.InstallMacroHook(editBox)
     PreSend(box, true)
   end)
   Linkify._macroHookInstalled = true
+  Linkify._macroBox = editBox
   Debug.Log("LINKIFY", "Macro edit box found and hooked")
   return true
 end

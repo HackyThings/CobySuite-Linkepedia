@@ -51,7 +51,7 @@ end
 
 -- Numbers the client may hand back as secrets are as good as none here
 local function Plain(value)
-  if issecretvalue and issecretvalue(value) then return nil end
+  if Utilities.IsSecret(value) then return nil end
   return value
 end
 

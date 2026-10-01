@@ -927,7 +927,7 @@ local function BuildHeader()
     row:SetHeight(PICKER_ROW_HEIGHT)
     row:SetPoint("TOPLEFT", 4, -4 - (i - 1) * PICKER_ROW_HEIGHT)
     row:SetPoint("RIGHT", -4, 0)
-    row.Highlight = CobySuite_CobysLinkepedia.UI.AddHoverHighlight(row)
+    CobySuite_CobysLinkepedia.UI.AddHoverHighlight(row)
     row.Icon = row:CreateTexture(nil, "ARTWORK")
     row.Icon:SetSize(16, 16)
     row.Icon:SetPoint("LEFT", 4, 0)
@@ -1369,6 +1369,9 @@ local function Init()
   end }, {
     Events.SavedVariantsChanged, Events.RecipeScanStarted, Events.RecipeScanProgress,
     Events.RecipeScanComplete, Events.RecipeScanCancelled,
+    -- A Database.Reset empties the index and stops the scan without the
+    -- scan's own events
+    Events.RecipeIndexUpdated,
   })
 
   Search._variantBuilderFrame = frame

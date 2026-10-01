@@ -13,7 +13,7 @@
 -- reload, and yields: no work in combat, while the scanner is held (test
 -- runs), during an item scan, or while a profession window is open.
 -- /lp recipes starts it by hand (a finished index is walked again) and
--- /lp recipes cancel stops it until the next login.
+-- /lp recipes cancel stops it until the next login or the next /lp recipes.
 
 local Scanner = CobysLinkepedia.Scanner
 local Database = CobysLinkepedia.Database
@@ -32,7 +32,7 @@ local GetRecipeSchematic = C_TradeSkillUI.GetRecipeSchematic
 local GetItemInfoInstant = C_Item.GetItemInfoInstant
 
 local frame = CreateFrame("Frame")
-local job = nil                 -- { activeSeconds, startPosition, found, sinceProgress }
+local job = nil                 -- { activeSeconds, startPosition, found, sinceProgress, waiting }
 local cancelledThisSession = false
 
 local function Fire(event, ...)
@@ -66,8 +66,7 @@ end
 local function Complete(scan)
   scan.complete = true
   scan.ceiling = scan.lastExisting
-  scan.date = time()
-  local found = job and job.found or 0
+  local found = job.found
   Stop()
   Debug.Log("SCAN", "Recipe scan complete: spells to %d, %d gear items indexed", scan.ceiling or 0, Database.GetRecipeCount())
   Fire(CobysLinkepedia.Events.RecipeIndexUpdated)

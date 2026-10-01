@@ -9,7 +9,8 @@
 --     AddonCompartmentFunc / FuncOnEnter / FuncOnLeave functions call.
 --
 --   local launcher = CobySuite.UI.CreateLauncher({
---     name    = "MyAddon",                    -- LDB object name; the button is <name>MinimapButton
+--     name    = "MyAddon",                    -- LDB object name; the button is <name>MinimapButton unless buttonName is given
+--     buttonName = "MyAddonMinimapButton",    -- optional global name for the minimap button
 --     label   = "My Addon",                   -- LDB label (default name)
 --     icon    = "Interface\\Icons\\INV_Misc_Book_09",
 --     tooltip = { brandColor = "00CFD0", title = "My Addon", body = ..., keys = ... },

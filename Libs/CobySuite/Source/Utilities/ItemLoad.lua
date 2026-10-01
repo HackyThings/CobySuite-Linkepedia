@@ -10,7 +10,7 @@
 --   })
 --   cancel()   -- neither callback runs afterwards; safe to call more than once
 --
--- Exactly one callback runs, at most once. A cached item calls onReady before
+-- Unless cancelled, exactly one callback runs, and only once. A cached item calls onReady before
 -- LoadItemThen returns. The load is Item:ContinueWithCancelOnItemLoad, whose
 -- cancel is called when the request times out or is cancelled.
 -------------------------------------------------------------------------------

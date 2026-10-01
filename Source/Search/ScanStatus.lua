@@ -174,7 +174,7 @@ function Search.InitScanStatus(window)
         local mode = status.scanMode or "Scanning"
         table.insert(parts, mode:sub(1,1):upper() .. mode:sub(2))
       end
-      if status.intensity and #parts > 0 then
+      if status.intensity then
         parts[#parts] = parts[#parts] .. " (" .. status.intensity .. ")"
       end
       table.insert(parts, string.format("%d / %d", status.position, status.upperBound))

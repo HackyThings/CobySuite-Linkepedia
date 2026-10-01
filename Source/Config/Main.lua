@@ -156,8 +156,9 @@ function Config.HandleSetCommand(input)
 end
 
 ---------------------------------------------------------------------------
--- OpenSettings / ToggleSettings: the settings window (Config/Window.lua),
--- for /lp settings and the minimap button. The Options > AddOns entry opens
+-- OpenSettings / ToggleSettings: the settings window (Config/Window.lua).
+-- /lp settings and the minimap button toggle it; OpenSettings is the suite's
+-- standard open-only entry. The Options > AddOns entry opens
 -- the window itself (window:Open).
 ---------------------------------------------------------------------------
 function Config.OpenSettings()

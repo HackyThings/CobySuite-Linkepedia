@@ -67,7 +67,7 @@ local function CreateRow(parent, index, searchBox)
   row:SetPoint("TOPLEFT", searchBox, "BOTTOMLEFT", -8, -ROW_GAP - (index - 1) * ROW_HEIGHT)
   row:SetPoint("RIGHT", parent, "RIGHT", -4, 0)
 
-  row.Highlight = CobySuite_CobysLinkepedia.UI.AddHoverHighlight(row, { 1, 1, 1, 0.08 })
+  CobySuite_CobysLinkepedia.UI.AddHoverHighlight(row, { 1, 1, 1, 0.08 })
 
   row.Selection = row:CreateTexture(nil, "BACKGROUND")
   row.Selection:SetAllPoints()
@@ -156,8 +156,7 @@ local function GetOrCreateFrame()
   if InCombatLockdown() then return nil end
 
   frame = CreateFrame("Frame", "CobysLinkepediaQuickSearch", UIParent, "BackdropTemplate")
-  frame:SetSize(BAR_WIDTH, 40)
-  frame:SetPoint("TOP", UIParent, "TOP", 0, -200)
+  frame:SetWidth(BAR_WIDTH)
   frame:SetBackdrop(Utilities.Backdrops.DIALOG)
   local bg = Utilities.Colors.DIALOG_BG
   frame:SetBackdropColor(bg[1], bg[2], bg[3], bg[4])
@@ -183,8 +182,8 @@ local function GetOrCreateFrame()
   -- The shared search box: debounced search, clear button, placeholder.
   -- Escape hides the bar rather than clearing the box. Enter while a search
   -- is still pending or running finishes it first, so it never picks a row
-  -- that belonged to the previous text; the arrows move the selection once
-  -- rows are current.
+  -- that belonged to the previous text; Up, Down and Tab (as Down) move the
+  -- selection once rows are current.
   local searchBox = CobySuite_CobysLinkepedia.UI.CreateSearchBox(frame, {
     width       = BAR_WIDTH - 24,
     point       = { "TOPLEFT", 12, -PAD },
@@ -296,11 +295,7 @@ end
 -------------------------------------------------------------------------------
 function QuickSearch.EnsureFrame()
   if frame then return end
-  if InCombatLockdown() then
-    EventUtil.RegisterOnceFrameEventAndCallback("PLAYER_REGEN_ENABLED", GetOrCreateFrame)
-    return
-  end
-  GetOrCreateFrame()
+  CobySuite_CobysLinkepedia.Utilities.RunOutOfCombat(GetOrCreateFrame)
 end
 
 function QuickSearch.Toggle()

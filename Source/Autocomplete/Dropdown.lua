@@ -31,7 +31,7 @@ local function CreateRow(parent, index)
   row:SetPoint("TOPRIGHT", -4, -(index - 1) * ROW_HEIGHT - 4)
 
   -- Highlight texture
-  row.Highlight = CobySuite_CobysLinkepedia.UI.AddHoverHighlight(row, { 1, 1, 1, 0.1 })
+  CobySuite_CobysLinkepedia.UI.AddHoverHighlight(row, { 1, 1, 1, 0.1 })
 
   -- Selection texture
   row.Selection = row:CreateTexture(nil, "BACKGROUND")
@@ -86,9 +86,7 @@ end
 -------------------------------------------------------------------------------
 UpdateSelectionVisuals = function()
   for i, row in ipairs(rows) do
-    if row.Selection then
-      row.Selection:SetShown(i == selectedIndex)
-    end
+    row.Selection:SetShown(i == selectedIndex)
   end
 end
 
@@ -116,7 +114,8 @@ local function ShowSelectionTooltip()
 end
 
 -------------------------------------------------------------------------------
--- Dropdown frame creation (lazy)
+-- Dropdown frame creation (built at login by EnsureDropdown, or when combat
+-- ends after a /reload in combat)
 -------------------------------------------------------------------------------
 local function GetOrCreateDropdown()
   if dropdown then return dropdown end
@@ -202,16 +201,11 @@ local function GetOrCreateDropdown()
 end
 
 -- Built at login so the frame, and its keyboard flag, exist before the first
--- search. A /reload in combat waits for the lockdown to lift.
+-- search. A /reload in combat waits for the lockdown to lift (queued once,
+-- however often this is called meanwhile).
 function Autocomplete.EnsureDropdown()
   if dropdown then return end
-  if InCombatLockdown() then
-    EventUtil.RegisterOnceFrameEventAndCallback("PLAYER_REGEN_ENABLED", function()
-      GetOrCreateDropdown()
-    end)
-    return
-  end
-  GetOrCreateDropdown()
+  CobySuite_CobysLinkepedia.Utilities.RunOutOfCombat(GetOrCreateDropdown)
 end
 
 -- Up or Down from either source. The chat box's key hook and this frame's
@@ -275,7 +269,6 @@ function Autocomplete.ShowDropdown(editBox, results, revision)
       -- Icon from the client's instant item data (records keep no icon)
       local icon = select(5, C_Item.GetItemInfoInstant(item.itemID))
       row.Icon:SetTexture(icon or "Interface\\Icons\\INV_Misc_QuestionMark")
-      row.Icon:Show()
 
       -- Name colored by quality
       local qualityColor = ITEM_QUALITY_COLORS[item.quality or 1]

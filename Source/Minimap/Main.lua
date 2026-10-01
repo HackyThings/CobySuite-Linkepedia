@@ -8,12 +8,10 @@ local Search = CobysLinkepedia.Search
 local Utilities = CobysLinkepedia.Utilities
 local Debug = CobysLinkepedia.Debug
 
-local ICON_TEXTURE = "Interface\\Icons\\INV_Misc_Book_09"
-
 local launcher = CobySuite_CobysLinkepedia.UI.CreateLauncher({
   name          = "CobysLinkepedia",
   label         = "Coby's Linkepedia",
-  icon          = ICON_TEXTURE,
+  icon          = CobysLinkepedia.ICON,
   buttonName    = "CobysLinkepediaMinimapButton",
   -- Utilities.BRAND_TOOLTIP_OPTS: the branded title, item count and click hints
   tooltip       = function() return Utilities.BRAND_TOOLTIP_OPTS end,

@@ -24,7 +24,7 @@ local function InitRow(row, entry, list)
   if not row._initialized then
     row:RegisterForClicks("LeftButtonUp", "RightButtonUp")
 
-    row.Highlight = CobySuite_CobysLinkepedia.UI.AddHoverHighlight(row)
+    CobySuite_CobysLinkepedia.UI.AddHoverHighlight(row)
 
     row.Icon = row:CreateTexture(nil, "ARTWORK")
     row.Icon:SetSize(ICON_SIZE, ICON_SIZE)

@@ -1,8 +1,9 @@
 -- Scanner: builds the item database by iterating item IDs
 -- Pipeline: DISCOVER → QUERY (micro-batched) → REFINE (micro-batched) → COMPLETE
 --
---   Phase 1 - DISCOVER:  GetItemInfoInstant to find all valid IDs (client-only, fast)
---   Phase 2 - QUERY:     GetItemInfo on valid IDs in micro-batches
+--   Phase 1 - DISCOVER:  C_Item.GetItemInfoInstant to find all valid IDs (client-only, fast)
+--   Phase 2 - QUERY:     C_Item.GetItemInfo on valid IDs, RequestLoadItemDataByID for the
+--                         uncached ones, in micro-batches
 --                         Each batch: query → short wait → harvest → next batch
 --   Phase 3 - REFINE_WAIT: 5-second pause for server stragglers
 --   Phase 4 - REFINE:    Re-query everything that failed Phase 2, in micro-batches
@@ -605,7 +606,7 @@ local function StepQuery()
 
     if not Resolve(itemID) then
       -- An explicit request, so the server's answer (ITEM_DATA_LOAD_RESULT)
-      -- arrives whatever GetItemInfo does under the hood
+      -- arrives whatever C_Item.GetItemInfo does under the hood
       CItem_RequestLoad(itemID)
       batchUncachedIDs[#batchUncachedIDs + 1] = itemID
       if #batchUncachedIDs >= batchCap then break end
@@ -817,10 +818,7 @@ local function StepComplete()
   CobysLinkepedia.EventBus:Fire(CobysLinkepedia.Events.ScanComplete, itemsFound)
   CobysLinkepedia.EventBus:Fire(CobysLinkepedia.Events.DatabaseUpdated)
 
-  local Msg = CobysLinkepedia.Utilities.Message.Success
-  if Msg then
-    Msg(string.format("Scan complete! Found %d items in %dm %ds.", itemsFound, minutes, seconds), "normal")
-  end
+  CobysLinkepedia.Utilities.Message.Success(string.format("Scan complete! Found %d items in %dm %ds.", itemsFound, minutes, seconds), "normal")
 end
 
 local STEPS = {
@@ -1309,7 +1307,7 @@ local function IdleTick()
       table.remove(pending, idleNext)   -- settled without asking: dead, or sent already
     else
       -- An explicit request, so the server's answer (ITEM_DATA_LOAD_RESULT)
-      -- arrives whatever GetItemInfo does under the hood
+      -- arrives whatever C_Item.GetItemInfo does under the hood
       CItem_RequestLoad(itemID)
       idleSession.asked = idleSession.asked + 1
       idleAsked[#idleAsked + 1] = itemID

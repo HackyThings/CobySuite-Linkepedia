@@ -12,7 +12,7 @@
 --   local guide = CobySuite.UI.CreateGuideWindow({
 --     name       = "MyAddonGuideWindow",   -- optional global name; Escape closes a named guide
 --     title      = "My Addon Guide",
---     icon       = "Interface\Icons\INV_Misc_Book_09",  -- optional, left of the title (CreateWindow)
+--     icon       = "Interface\\Icons\\INV_Misc_Book_09",  -- optional, left of the title (CreateWindow)
 --     intro      = "A line above the sections.",           -- optional
 --     footer     = "Open this guide any time with /ma guide",   -- optional: a strip along the
 --                                                        -- bottom that doesn't scroll (color codes welcome)
@@ -30,6 +30,11 @@
 --                                                               -- time the guide shows (text another
 --                                                               -- part of the addon supplies later)
 --         try     = { { "/ma show", "Open the search window" }, { "Shift-click", "Link it" } },
+--         buttons = { { text = "Build Database", width = 140, tooltip = "...",   -- optional, under the
+--                       onClick = function(button) end,                         -- text: an action the
+--                       enabled = function() return true end,                   -- section talks about;
+--                       label = function() return "Building..." end } },        -- enabled and label are
+--                                                               -- read again on show and after a click
 --       },
 --     },
 --   })
@@ -191,10 +196,48 @@ local function Paragraphs(body)
   return body or ""
 end
 
--- Reads every function body again (on show, before the layout measures it)
+-- A section button's label and state, read from its definition
+local function PaintButton(button)
+  local def = button.def
+  if def.label then
+    local ok, text = pcall(def.label)
+    button:SetText(ok and text or def.text or "")
+  end
+  if def.enabled then
+    local ok, on = pcall(def.enabled)
+    button:SetEnabled(ok and on == true)
+  end
+end
+
+-- Reads every function body and button label again, then lays the guide out
+-- again while it is shown, so a body whose text changed length gets its new
+-- height (on show, after a button click, or from an outside call)
 function GuideMixin:RefreshBodies()
   for _, s in ipairs(self.sections) do
     if type(s.def.body) == "function" then s.text:SetText(Paragraphs(s.def.body)) end
+    for _, button in ipairs(s.buttons or {}) do PaintButton(button) end
+  end
+  if self:IsShown() then self:Relayout() end
+end
+
+-- A row of buttons under the section's text: things the section talks about
+local function BuildButtons(guide, s, body, defs)
+  s.buttons = {}
+  local previous
+  for i, def in ipairs(defs) do
+    local button = UI.CreateButton(body, {
+      text = def.text or "", size = { def.width or 140, 22 }, tooltip = def.tooltip,
+      onClick = function(self)
+        if def.onClick then def.onClick(self) end
+        guide:RefreshBodies()
+      end,
+    })
+    button.def = def
+    if previous then
+      button:SetPoint("LEFT", previous, "RIGHT", 8, 0)
+    end
+    previous = button
+    s.buttons[i] = button
   end
 end
 
@@ -249,6 +292,7 @@ local function BuildSection(guide, def)
     try:SetText(table.concat(lines, "\n"))
     s.tryLabel, s.try = label, try
   end
+  if def.buttons and #def.buttons > 0 then BuildButtons(guide, s, body, def.buttons) end
   body:Hide()
 
   s.header, s.icon, s.arrow, s.title, s.summary = header, icon, arrow, title, summary
@@ -264,6 +308,12 @@ local function MeasureBody(s, width)
   if s.try then
     s.try:SetWidth(textWidth)
     h = h + 10 + s.tryLabel:GetStringHeight() + 4 + s.try:GetStringHeight()
+  end
+  if s.buttons and s.buttons[1] then
+    h = h + 10
+    s.buttons[1]:ClearAllPoints()
+    s.buttons[1]:SetPoint("TOPLEFT", s.body, "TOPLEFT", BODY_LEFT, -h)
+    h = h + 22
   end
   return math.ceil(h + PAD)
 end
@@ -417,10 +467,7 @@ function UI.CreateGuideWindow(opts)
 
   f:RestoreState()
   f:SetScript("OnSizeChanged", function(self) self:Relayout() end)
-  f:HookScript("OnShow", function(self)
-    self:RefreshBodies()
-    self:Relayout()
-  end)
+  f:HookScript("OnShow", function(self) self:RefreshBodies() end)
   f:Relayout()
   return f
 end
@@ -441,7 +488,12 @@ end
 --     entries = MyAddon.Data.Changelog,   -- newest first: { version, title, date, icon, new, changed, fixed }
 --     version = MyAddon.VERSION,          -- the TOC's
 --     state   = function() return MY_ADDON_WINDOW_STATE end,   -- saved table: holds lastVersion and the window's place
+--     persistKey = "changelogWindow",     -- optional: the key under state() for the window's place (the default)
 --     onFirstRun = function() MyAddon.Guide.Show() end,          -- optional: a fresh install
+--     existingInstall = function() return MyAddon.hadSavedConfig end, -- optional: true when the player
+--                                         -- ran the addon before it had this window (its settings
+--                                         -- were saved before this login): no guide, the version is
+--                                         -- only recorded, and the next update shows What's New
 --     combatMessage = function(text) MyAddon.Message(text) end, -- optional: when asked for in combat before it is built
 --     onShow = function(what) end,        -- optional: "guide" or "changelog", at login
 --   })
@@ -478,15 +530,21 @@ function WhatsNew.Line(text)
   return BULLET .. Keys(tostring(text))
 end
 
--- Decide(state, version, entries): what login shows, recording version as
--- state.lastVersion. "guide" on a fresh install (no lastVersion); "changelog"
--- and the section keys of every entry newer than the last version run and not
--- newer than this one (in the entries' order) after an update; else nil.
-function WhatsNew.Decide(state, version, entries)
+-- Decide(state, version, entries, existing): what login shows, recording
+-- version as state.lastVersion. "guide" on a fresh install (no lastVersion,
+-- and existing not true); nothing when there is no lastVersion but the
+-- player ran the addon before (existing: a release from before this window);
+-- "changelog" and the section keys of every entry newer than the last
+-- version run and not newer than this one (in the entries' order) after an
+-- update; else nil.
+function WhatsNew.Decide(state, version, entries, existing)
   if type(state) ~= "table" or type(version) ~= "string" then return nil end
   local last = state.lastVersion
   state.lastVersion = version
-  if type(last) ~= "string" then return "guide" end
+  if type(last) ~= "string" then
+    if existing then return nil end
+    return "guide"
+  end
   if U.CompareVersions(version, last) <= 0 then return nil end
   local keys = {}
   for _, entry in ipairs(entries or {}) do
@@ -569,7 +627,8 @@ end
 function WhatsNewMixin:OnLogin()
   self:Build()
   local opts = self.opts
-  local what, keys = WhatsNew.Decide(opts.state and opts.state(), opts.version, opts.entries)
+  local existing = opts.existingInstall and opts.existingInstall() == true
+  local what, keys = WhatsNew.Decide(opts.state and opts.state(), opts.version, opts.entries, existing)
   if not what then return end
   if opts.onShow then opts.onShow(what) end
   local function Show()

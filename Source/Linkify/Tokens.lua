@@ -12,9 +12,12 @@
 -- and is sent as typed.
 --
 -- A token whose item is known but not loaded yet goes out as its plain
--- [Name] and asks the client for the item, so the next send links; one
--- whose item cannot be found at all, or a saved variant that was deleted,
--- goes out as typed. An n= token's item
+-- [Name] and asks the client for the item, so the next send links. A token
+-- whose qualifier matches no captured variant also goes out as [Name], and
+-- this fallback asks for no load (matching the qualifier may still load a
+-- variant's details; brackets keep such a qualifier as typed). One whose
+-- item cannot be found at all, or a saved variant that was deleted, goes
+-- out as typed. An n= token's item
 -- is looked up once per database generation, so a macro pressed every
 -- second searches once.
 

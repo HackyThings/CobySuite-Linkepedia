@@ -33,7 +33,7 @@ local function ShowContent(f)
 end
 
 -------------------------------------------------------------------------------
--- Build the detail pane (always visible)
+-- Build the detail pane (shown beside every tab but Stats)
 -------------------------------------------------------------------------------
 local function CreateDetailPane(parent)
   local f = CreateFrame("Frame", nil, parent, "BackdropTemplate")
@@ -292,7 +292,7 @@ function Search.ShowDetail(item)
 end
 
 -------------------------------------------------------------------------------
--- Init (called by Window.lua OnLoad): creates pane immediately
+-- Init (called by Window.lua OnLoad): creates the pane at once
 -------------------------------------------------------------------------------
 -- The grip on the pane's left edge: drag to make the pane wider or narrower
 -- (the content left of it follows, Window.lua), double-click for the default.

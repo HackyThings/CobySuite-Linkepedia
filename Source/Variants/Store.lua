@@ -2,9 +2,9 @@
 -- chose to keep, each under a short number that ${v=N} tokens name.
 --
 -- They live in COBYS_LINKEPEDIA_STATE beside favorites and history, not in
--- the item database, because Reset, a Build's prune and corrupt-data
--- recovery all clear the database's captured variants, and a macro's saved
--- variant must outlive those.
+-- the item database, because Reset and corrupt-data recovery clear the
+-- database's captured variants and a Build's prune can drop some, and a
+-- macro's saved variant must outlive those.
 --
 -- COBYS_LINKEPEDIA_STATE.savedVariants = { nextID = n, byID = { [id] = record } }
 --   id        the record's number; IDs count up and are never reused, so a

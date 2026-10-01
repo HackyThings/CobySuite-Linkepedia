@@ -1,11 +1,53 @@
 -- Guide: the feature guide, a section for each part of Coby's Linkepedia
--- (CobySuite.UI.CreateGuideWindow). /lp tutorial and the search window's
--- "?" button open it. Built at load, like the search window, so opening it
--- in combat creates nothing.
+-- (CobySuite.UI.CreateGuideWindow, the suite's standard guide). /lp guide
+-- (alias tutorial), the search window's "?" and the settings window's Guide
+-- button open it, and a fresh install opens it at its first section
+-- (Guide/WhatsNew.lua), the item database, whose Build Database button
+-- starts the first build (it replaced the old welcome window). Built at
+-- load, like the search window, so opening it in combat creates nothing.
 
 local Guide = CobysLinkepedia.Guide
+local U = CobySuite_CobysLinkepedia.Utilities
 
 local ICONS = "Interface\\Icons\\"
+
+-- The database section's button: Build on an empty database, Rebuild (which
+-- asks first) on a full one, greyed while any scan runs
+local function Scanning()
+  local ok, status = pcall(CobysLinkepedia.Scanner.GetStatus)
+  return ok and type(status) == "table" and status.isActive == true
+end
+
+local function BuildLabel()
+  if Scanning() then return "Building..." end
+  local ok, count = pcall(CobysLinkepedia.Database.GetCount)
+  if ok and type(count) == "number" and count > 0 then return "Rebuild Database" end
+  return "Build Database"
+end
+
+-- The search window's speeds: Shift-click faster, Ctrl+Shift-click fastest
+local function Intensity()
+  if IsShiftKeyDown() and IsControlKeyDown() then return "Max" end
+  if IsShiftKeyDown() then return "Boost" end
+  return nil
+end
+
+local function HasItems()
+  local ok, count = pcall(CobysLinkepedia.Database.GetCount)
+  return ok and type(count) == "number" and count > 0
+end
+
+-- Expand: only the IDs the database lacks, once there is a database to add to
+local EXPAND_BUTTON = {
+  text = "Expand Database", width = 150,
+  tooltip = "Scan only the item IDs your database doesn't have yet: a new patch's items, or the rest of a scan that was cancelled. Much faster than a rebuild.",
+  label = function() return Scanning() and "Scanning..." or "Expand Database" end,
+  enabled = function() return HasItems() and not Scanning() end,
+  onClick = function()
+    CobysLinkepedia.Scanner.StartExpand(Intensity())
+    CobysLinkepedia.Debug.Log("INIT", "Guide: expand started")
+  end,
+}
 
 -- Each section: what the part does, then commands and keys to try. Keep the
 -- text in step with the README.
@@ -17,7 +59,21 @@ Guide.SECTIONS = {
     summary = "Every item your game client knows, built on your own computer",
     body = {
       "Coby's Linkepedia does not ship a list of items. It builds one from your game client, about 175,000 items, so it is never out of date and covers anything the game knows.",
-      "A build runs in the background for a few minutes and pauses by itself in combat. You can pause, resume or cancel it, and the search window's footer shows the progress, the rate and the time left. Shift-click Build or Expand for a faster scan, or Ctrl+Shift-click for the fastest; both stutter while they run.",
+      "A build runs in the background for a few minutes and pauses by itself in combat. You can pause, resume or cancel it, and the search window's footer shows the progress, the rate and the time left. Shift-click Build or Expand (the buttons below, or the search window's) for a faster scan, or Ctrl+Shift-click for the fastest; both stutter while they run.",
+      "Already have a database? |cFFFFD100Expand Database|r adds only the items it is missing, which is much quicker than a rebuild.",
+    },
+    buttons = {
+      {
+        text = "Build Database", width = 150,
+        tooltip = "Build your item database now. It runs in the background for a few minutes and pauses by itself in combat.",
+        label = BuildLabel,
+        enabled = function() return not Scanning() end,
+        onClick = function()
+          CobysLinkepedia.Scanner.StartBuild(false, Intensity())
+          CobysLinkepedia.Debug.Log("INIT", "Guide: build started from the database section")
+        end,
+      },
+      EXPAND_BUTTON,
     },
     try = {
       { "/lp build", "Build the database from scratch" },
@@ -36,6 +92,7 @@ Guide.SECTIONS = {
       "Item variants, such as crafted ranks and other versions of an item, are captured as you play: from your bags, the gear you wear, loot, trades, mail and the links other players post in chat.",
       "Expand scans only the item IDs your database does not have yet, and after a game patch a dialog offers to run it, so new items arrive without a rebuild and without waiting for an addon update. IDs the server does not have are skipped until the next game patch.",
     },
+    buttons = { EXPAND_BUTTON },
     try = {
       { "/lp expand", "Add a new patch's items, or finish a scan that was cancelled" },
     },
@@ -74,7 +131,7 @@ Guide.SECTIONS = {
     icon = ICONS .. "INV_Misc_ScrollUnrolled01",
     summary = "Put exact items in macros with ${i=ID}, ${n=name} and ${v=N}",
     body = {
-      "A macro names its item exactly with a token: ${i=6948} links item 6948, ${n=hearth} links the item named that, and ${v=5} links your saved variant 5. Tokens work in any chat line a macro sends, and in typed chat too.",
+      "A macro names its item exactly with a token: ${i=6948} links item 6948, ${n=hearth} links the item named exactly that, or else the first match autocomplete would show, and ${v=5} links your saved variant 5. Tokens work in any chat line a macro sends, and in typed chat too.",
       "The macro window gets a panel on its right edge. It lists the token syntax, shows what each token in the selected macro links right now, and finds items to add at your cursor. Shift-click an item into a macro's chat line and the panel offers its token.",
     },
     try = {
@@ -133,7 +190,8 @@ Guide.SECTIONS = {
     try = {
       { "/lp settings", "Open the settings window" },
       { "/lp help", "List every command" },
-      { "/lp tutorial", "Open or close this guide" },
+      { "/lp guide", "Open or close this guide" },
+      { "/lp changelog", "What changed in each version" },
     },
   },
 }
@@ -141,7 +199,9 @@ Guide.SECTIONS = {
 local window = CobySuite_CobysLinkepedia.UI.CreateGuideWindow({
   name = "CobysLinkepediaGuideWindow",
   title = "Coby's Linkepedia Guide",
-  intro = "Everything Coby's Linkepedia can do, one part at a time. Click a heading to open or close it.",
+  icon = CobysLinkepedia.ICON,
+  intro = "Everything Coby's Linkepedia can do, one part at a time. New here? Start with the first section. Click a heading to open or close it.",
+  footer = "Open this guide any time with " .. U.WrapColor(U.Colors.HELP_COMMAND, "/lp guide"),
   sections = Guide.SECTIONS,
   persist = {
     svTable = function() return COBYS_LINKEPEDIA_WINDOW_STATE end,
@@ -153,8 +213,22 @@ function Guide.GetWindow()
   return window
 end
 
+-- The Build Database button follows the scanner while the guide is open
+local listener = {}
+function listener:ReceiveEvent()
+  if window:IsShown() then window:RefreshBodies() end
+end
+CobysLinkepedia.EventBus:Register(listener, {
+  CobysLinkepedia.Events.ScanComplete, CobysLinkepedia.Events.ScanCancelled, CobysLinkepedia.Events.DatabaseUpdated,
+})
+
 function Guide.Toggle()
   window:Toggle()
+end
+
+-- Shows the guide at its first section (a fresh install's first login)
+function Guide.Show()
+  window:OpenSection(Guide.SECTIONS[1].key)
 end
 
 CobysLinkepedia.Debug.Log("INIT", "Guide loaded")

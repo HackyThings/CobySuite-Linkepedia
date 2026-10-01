@@ -13,7 +13,11 @@ CobysLinkepedia = {
   Toast = {},
   Minimap = {},
   Utilities = {},
+  Data = {},
 }
+
+-- The TOC's IconTexture, on every window's title
+CobysLinkepedia.ICON = "Interface\\Icons\\INV_Misc_Book_09"
 
 -------------------------------------------------------------------------------
 -- EventBus event constants
@@ -87,11 +91,20 @@ end
 
 -------------------------------------------------------------------------------
 -- Slash command registration and routing (CobySuite.Slash.Register)
--- "help" (also empty input) and "version" come from the registrar.
--- Core.lua loads before Utilities/Main.lua, so the chat printer is bound late.
+-- The suite's standard commands (show, settings, guide, changelog, debug,
+-- test) come from CobySuite.Slash.StandardCommands, Linkepedia's own go in
+-- extra; "help" and "version" come from the registrar, and onEmpty makes a
+-- bare /lp run show (the suite's standard). Core.lua loads before every module it names, so each
+-- handler resolves its module per call.
 -------------------------------------------------------------------------------
 local function Msg(text)
   CobysLinkepedia.Utilities.Message(text)
+end
+
+local function ToggleSearch()
+  if CobysLinkepedia.Search.ToggleWindow then
+    CobysLinkepedia.Search.ToggleWindow()
+  end
 end
 
 CobySuite_CobysLinkepedia.Slash.Register({
@@ -100,131 +113,115 @@ CobySuite_CobysLinkepedia.Slash.Register({
   title = "Coby's Linkepedia",
   version = VERSION,
   message = Msg,
-  commands = {
-    { name = "build", aliases = { "rebuild" }, help = "Wipe the item database and scan every item ID from scratch (asks first when a database exists)",
-      run = function()
-        if CobysLinkepedia.Scanner.StartBuild then
-          CobysLinkepedia.Scanner.StartBuild()
-        end
-      end },
-    { name = "expand", help = "Scan only the item IDs the database does not have yet; also continues an unfinished scan",
-      run = function()
-        if CobysLinkepedia.Scanner.StartExpand then
-          CobysLinkepedia.Scanner.StartExpand()
-        end
-      end },
-    { name = "pause", help = "Pause the running scan",
-      run = function()
-        if CobysLinkepedia.Scanner.Pause then
-          CobysLinkepedia.Scanner.Pause()
-        end
-      end },
-    { name = "resume", help = "Resume a paused scan",
-      run = function()
-        if CobysLinkepedia.Scanner.Resume then
-          CobysLinkepedia.Scanner.Resume()
-        end
-      end },
-    { name = "stop", aliases = { "cancel" }, help = "Cancel the running scan; the items found so far are kept",
-      run = function()
-        if CobysLinkepedia.Scanner.Cancel then
-          CobysLinkepedia.Scanner.Cancel()
-        end
-      end },
-    { name = "show", help = "Open or close the search window",
-      run = function()
-        if CobysLinkepedia.Search.ToggleWindow then
-          CobysLinkepedia.Search.ToggleWindow()
-        end
-      end },
-    { name = "qs", aliases = { "quicksearch" }, help = "Open or close the quick search bar",
-      run = function()
-        if CobysLinkepedia.QuickSearch.Toggle then
-          CobysLinkepedia.QuickSearch.Toggle()
-        end
-      end },
-    { name = "tutorial", aliases = { "guide" }, help = "Open or close the feature guide: what each part of Coby's Linkepedia does",
-      run = function()
-        if CobysLinkepedia.Guide.Toggle then
-          CobysLinkepedia.Guide.Toggle()
-        end
-      end },
-    { name = "settings", aliases = { "config" }, help = "Open the settings window",
-      run = function()
-        if CobysLinkepedia.Config.OpenSettings then
-          CobysLinkepedia.Config.OpenSettings()
-        end
-      end },
-    { name = "debug", help = "Open or close the debug log window (copy it into a bug report)",
-      run = function()
-        if CobysLinkepedia.DebugWindow then
-          CobysLinkepedia.DebugWindow:Toggle()
-        end
-      end },
-    { name = "status", help = "Open or close the status window: the database, the scans and the idle scan, updated live",
-      run = function()
-        if CobysLinkepedia.Search.ToggleStatusWindow then
-          CobysLinkepedia.Search.ToggleStatusWindow()
-        end
-      end },
-    { name = "stats", help = "Open or close the live stats window: memory, framerate, latency and database counts",
-      run = function()
-        if CobysLinkepedia.Search.ToggleStatsWindow then
-          CobysLinkepedia.Search.ToggleStatsWindow()
-        end
-      end },
-    { name = "set", usage = "set <key> <value>", help = "Change a setting by its key, such as /lp set scanSpeed Fast; /lp set alone lists every key and its value",
-      run = function(rest)
-        if CobysLinkepedia.Config.HandleSetCommand then
-          CobysLinkepedia.Config.HandleSetCommand(rest)
-        end
-      end },
-    { name = "reset", help = "Delete the item database with its captured variants and recipe index (asks first); settings, favorites, history and saved variants are kept",
-      run = function()
-        if CobysLinkepedia.Database.ShowResetConfirmation then
-          CobysLinkepedia.Database.ShowResetConfirmation()
-        end
-      end },
-    { name = "recipes", usage = "recipes [cancel]", help = "Index which recipes craft which gear, for the Variant Builder (runs by itself after a patch); cancel stops it",
-      run = function(rest)
-        CobysLinkepedia.Scanner.RecipeScanCommand(rest and rest:match("^%s*(%S+)"))
-      end },
-    { name = "variant", usage = "variant [itemID]", help = "Open the Variant Builder, optionally on an item ID",
-      run = function(rest)
-        CobysLinkepedia.Search.OpenBuilder(tonumber(rest and rest:match("^%s*(%d+)")))
-      end },
-    { name = "findmax", usage = "findmax [cancel]", help = "Scan item IDs 0 to 1,000,000 and report the highest one the game knows; cancel stops it",
-      run = function(rest)
-        if CobysLinkepedia.Scanner.FindMaxItemID then
-          CobysLinkepedia.Scanner.FindMaxItemID(rest and rest:match("^%s*(%S+)"))
-        end
-      end },
-    -- Development only: a build without the test files has no such commands
-    { name = "perf", help = "Open the test window and run the performance measurement (Run Perf); the report opens for copying",
-      available = function() return CobysLinkepedia.Tests ~= nil end,
-      run = function()
-        local tests = CobysLinkepedia.Tests
-        if not tests then
-          Msg("Tests are not loaded.")
-          return
-        end
-        tests.RunPerformance()
-      end },
-    { name = "test", usage = "test [suite]", help = "Open the in-game test window, optionally running one suite",
-      available = function() return CobysLinkepedia.Tests ~= nil end,
-      run = function(rest)
-        local tests = CobysLinkepedia.Tests
-        if not tests then
-          Msg("Tests are not loaded.")
-          return
-        end
-        tests.Window:Show()
-        local suite = rest and rest:match("^%s*(%S+)")
-        if suite then
-          tests.RunSuite(suite)
-        end
-      end },
-  },
+  -- the suite's standard: a bare /lp opens the search window, as /lp show
+  onEmpty = ToggleSearch,
+  commands = CobySuite_CobysLinkepedia.Slash.StandardCommands({
+    show = ToggleSearch,
+    showHelp = "Open or close the search window",
+    settings = function()
+      if CobysLinkepedia.Config.ToggleSettings then
+        CobysLinkepedia.Config.ToggleSettings()
+      end
+    end,
+    guide = function()
+      if CobysLinkepedia.Guide.Toggle then
+        CobysLinkepedia.Guide.Toggle()
+      end
+    end,
+    changelog = function()
+      if CobysLinkepedia.WhatsNew then
+        CobysLinkepedia.WhatsNew.Toggle()
+      end
+    end,
+    debug = function()
+      if CobysLinkepedia.DebugWindow then
+        CobysLinkepedia.DebugWindow:Toggle()
+      end
+    end,
+    tests = function() return CobysLinkepedia.Tests end,
+    extra = {
+      { name = "build", aliases = { "rebuild" }, help = "Wipe the item database and scan every item ID from scratch (asks first when a database exists)",
+        run = function()
+          if CobysLinkepedia.Scanner.StartBuild then
+            CobysLinkepedia.Scanner.StartBuild()
+          end
+        end },
+      { name = "expand", help = "Scan only the item IDs the database does not have yet; also continues an unfinished scan",
+        run = function()
+          if CobysLinkepedia.Scanner.StartExpand then
+            CobysLinkepedia.Scanner.StartExpand()
+          end
+        end },
+      { name = "pause", help = "Pause the running scan",
+        run = function()
+          if CobysLinkepedia.Scanner.Pause then
+            CobysLinkepedia.Scanner.Pause()
+          end
+        end },
+      { name = "resume", help = "Resume a paused scan",
+        run = function()
+          if CobysLinkepedia.Scanner.Resume then
+            CobysLinkepedia.Scanner.Resume()
+          end
+        end },
+      { name = "stop", aliases = { "cancel" }, help = "Cancel the running scan; the items found so far are kept",
+        run = function()
+          if CobysLinkepedia.Scanner.Cancel then
+            CobysLinkepedia.Scanner.Cancel()
+          end
+        end },
+      { name = "qs", aliases = { "quicksearch" }, help = "Open or close the quick search bar",
+        run = function()
+          if CobysLinkepedia.QuickSearch.Toggle then
+            CobysLinkepedia.QuickSearch.Toggle()
+          end
+        end },
+      { name = "status", help = "Open or close the status window: the database, the scans and the idle scan, updated live",
+        run = function()
+          if CobysLinkepedia.Search.ToggleStatusWindow then
+            CobysLinkepedia.Search.ToggleStatusWindow()
+          end
+        end },
+      { name = "stats", help = "Open or close the live stats window: memory, framerate, latency and database counts",
+        run = function()
+          if CobysLinkepedia.Search.ToggleStatsWindow then
+            CobysLinkepedia.Search.ToggleStatsWindow()
+          end
+        end },
+      { name = "set", usage = "set <key> <value>", help = "Change a setting by its key, such as /lp set scanSpeed Fast; /lp set alone lists every key and its value",
+        run = function(rest)
+          if CobysLinkepedia.Config.HandleSetCommand then
+            CobysLinkepedia.Config.HandleSetCommand(rest)
+          end
+        end },
+      { name = "reset", help = "Delete the item database with its captured variants and recipe index (asks first); settings, favorites, history and saved variants are kept",
+        run = function()
+          if CobysLinkepedia.Database.ShowResetConfirmation then
+            CobysLinkepedia.Database.ShowResetConfirmation()
+          end
+        end },
+      { name = "recipes", usage = "recipes [cancel]", help = "Index which recipes craft which gear, for the Variant Builder (runs by itself after a patch); cancel stops it",
+        run = function(rest)
+          CobysLinkepedia.Scanner.RecipeScanCommand(rest and rest:match("^%s*(%S+)"))
+        end },
+      { name = "variant", usage = "variant [itemID]", help = "Open the Variant Builder, optionally on an item ID",
+        run = function(rest)
+          CobysLinkepedia.Search.OpenBuilder(tonumber(rest and rest:match("^%s*(%d+)")))
+        end },
+      { name = "findmax", usage = "findmax [cancel]", help = "Scan item IDs 0 to 1,000,000 and report the highest one the game knows; cancel stops it",
+        run = function(rest)
+          if CobysLinkepedia.Scanner.FindMaxItemID then
+            CobysLinkepedia.Scanner.FindMaxItemID(rest and rest:match("^%s*(%S+)"))
+          end
+        end },
+      -- Development only: a build without the test files has no such command
+      { name = "perf", help = "Open the test window and run the performance measurement (Run Perf); the report opens for copying",
+        available = function() return CobysLinkepedia.Tests ~= nil end,
+        run = function()
+          CobysLinkepedia.Tests.RunPerformance()
+        end },
+    },
+  }),
 })
 
 -------------------------------------------------------------------------------
@@ -338,20 +335,29 @@ EventUtil.ContinueOnPlayerLogin(function()
     CobysLinkepedia.Database.ShowCorruptDialog()
   end
 
-  -- First install check
+  -- The changelog window (Guide/WhatsNew.lua) decides from
+  -- COBYS_LINKEPEDIA_WINDOW_STATE.lastVersion, which versions before it never
+  -- wrote. A player who ran one of them (no lastVersion yet, a stored
+  -- version, and the first-install login already behind them) starts from
+  -- the version they last ran,
+  -- read before the migration below records this one, so an update shows
+  -- what changed instead of the guide for a fresh install
+  local windowState = COBYS_LINKEPEDIA_WINDOW_STATE
+  local storedVersion = COBYS_LINKEPEDIA_STATE and COBYS_LINKEPEDIA_STATE.version
+  if type(windowState) == "table" and windowState.lastVersion == nil
+      and type(storedVersion) == "string" and not COBYS_LINKEPEDIA_STATE.firstInstall then
+    windowState.lastVersion = storedVersion
+  end
+
+  -- First install: the guide opens at its first section (What's New's
+  -- fresh-install step), whose Build Database button offers the first build
   if COBYS_LINKEPEDIA_STATE and COBYS_LINKEPEDIA_STATE.firstInstall then
-    if CobysLinkepedia.Config.ShowWelcomeWindow then
-      CobysLinkepedia.Config.ShowWelcomeWindow()
-    end
+    COBYS_LINKEPEDIA_STATE.firstInstall = false
   else
-    -- Version migration check
-    local storedVersion = COBYS_LINKEPEDIA_STATE and COBYS_LINKEPEDIA_STATE.version
+    -- Version migration check (what changed shows in the changelog window)
     if storedVersion and storedVersion ~= VERSION then
       if CobysLinkepedia.Config.RunMigration then
         CobysLinkepedia.Config.RunMigration(storedVersion, VERSION)
-      end
-      if CobysLinkepedia.Config.ShowUpdateWindow then
-        CobysLinkepedia.Config.ShowUpdateWindow(VERSION)
       end
       if COBYS_LINKEPEDIA_STATE then
         COBYS_LINKEPEDIA_STATE.version = VERSION
@@ -407,6 +413,9 @@ EventUtil.ContinueOnPlayerLogin(function()
       Msg("Your last scan did not finish. Use /lp expand to continue it; the items already stored are kept.", "normal")
     end
   end
+
+  -- A fresh install opens the guide; an update, the changelog
+  if CobysLinkepedia.WhatsNew then CobysLinkepedia.WhatsNew.OnLogin() end
 
   CobysLinkepedia.Debug.Log("INIT", "PLAYER_LOGIN complete")
 end)

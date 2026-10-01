@@ -21,12 +21,11 @@ local LABEL_W = 150
 -- Text helpers
 -------------------------------------------------------------------------------
 local Colors = Utilities.Colors
-local ERROR_RED = "FF4D4D"
-local QUIET_GRAY = "999999"
+local QUIET_GRAY = "999999"   -- no shared color between DISABLED_GRAY and LABEL_GRAY
 
 local function Green(text) return Utilities.WrapColor(Colors.TEXT_GREEN, text) end
 local function Gold(text) return Utilities.WrapColor(Colors.TEXT_GOLD, text) end
-local function Red(text) return Utilities.WrapColor(ERROR_RED, text) end
+local function Red(text) return Utilities.WrapColor(Colors.WARNING_RED, text) end
 local function Gray(text) return Utilities.WrapColor(QUIET_GRAY, text) end
 
 -- A count with the player's thousands separator
@@ -235,7 +234,11 @@ local window = CobySuite_CobysLinkepedia.UI.CreateWindow({
 })
 
 window.Rows = {}       -- key -> row frame, with .Value
-local rowList = {}
+local lists = {}       -- one shared metric list per section
+
+local function OnRowError(metric, err)
+  Debug.Warn("UI", "Status window row %s failed: %s", metric.key, tostring(err))
+end
 
 local y = -TOP
 for _, section in ipairs(SECTIONS) do
@@ -246,52 +249,32 @@ for _, section in ipairs(SECTIONS) do
   })
   y = y - SECTION_H
 
+  local metrics = {}
   for i, def in ipairs(section.rows) do
-    local row = CreateFrame("Frame", nil, window)
-    row:SetHeight(ROW_H)
-    row:SetPoint("TOPLEFT", PAD, y)
-    row:SetPoint("TOPRIGHT", -PAD, y)
-    Utilities.AddAlternatingRowBg(row, i)
-
-    local label = row:CreateFontString(nil, "OVERLAY", Utilities.Fonts.SMALL)
-    label:SetPoint("LEFT", 4, 0)
-    label:SetWidth(LABEL_W)
-    label:SetJustifyH("LEFT")
-    label:SetText(def.label)
-    label:SetTextColor(unpack(Colors.LABEL_GRAY))
-
-    local value = row:CreateFontString(nil, "OVERLAY", Utilities.Fonts.DATA)
-    value:SetPoint("LEFT", label, "RIGHT", 4, 0)
-    value:SetPoint("RIGHT", -4, 0)
-    value:SetJustifyH("LEFT")
-    value:SetWordWrap(false)
-    value:SetText("--")
-    row.Value = value
-    row.def = def
-
-    row:EnableMouse(true)
-    Utilities.AddTooltip(row, def.tooltip)
-
-    window.Rows[def.key] = row
-    rowList[#rowList + 1] = row
-    y = y - ROW_H
+    metrics[i] = { key = def.key, label = def.label, tooltip = def.tooltip, getValue = def.value }
   end
+  local list = CobySuite_CobysLinkepedia.UI.CreateMetricList(window, metrics, {
+    rowHeight = ROW_H, labelWidth = LABEL_W, padding = PAD, top = -y,
+    errorText = Red("error"), onError = OnRowError,
+  })
+  for _, row in ipairs(list.rows) do
+    -- Inset the label from the shaded row, and keep a long value on its line
+    row.Label:SetPoint("LEFT", 4, 0)
+    row.Value:SetWordWrap(false)
+  end
+  for key, row in pairs(list.byKey) do window.Rows[key] = row end
+  lists[#lists + 1] = list
+  y = y - #section.rows * ROW_H
 end
 
+-- Every row reads the same snapshot of the scanner
 function window:Refresh()
   local snapshot = {
     scan = Scanner.GetStatus(),
     last = Scanner.GetLastScan(),
     idle = Scanner.GetIdleStatus(),
   }
-  for _, row in ipairs(rowList) do
-    local ok, text = pcall(row.def.value, snapshot)
-    if not ok then
-      Debug.Warn("UI", "Status window row %s failed: %s", row.def.key, tostring(text))
-      text = Red("error")
-    end
-    row.Value:SetText(text)
-  end
+  for _, list in ipairs(lists) do list.Refresh(snapshot) end
 end
 
 -- Every UPDATE_INTERVAL while shown, and at once when it opens

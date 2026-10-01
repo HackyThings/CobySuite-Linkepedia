@@ -1,4 +1,4 @@
--- Stats Window: floating modal with live performance metrics (/lp stats)
+-- Stats Window: a movable window of live performance metrics (/lp stats)
 -- Adapted from CobySniper's Monitor StatsTab pattern.
 
 local Search = CobysLinkepedia.Search

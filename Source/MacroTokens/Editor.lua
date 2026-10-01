@@ -11,8 +11,9 @@
 -- 2026-09-16). The next SaveMacro reads them, including from inside the panel
 -- manager when the window closes. So addon code only stages a change (the new
 -- body, where the cursor goes, a message), and one hardware click on the
--- apply button (an InsecureActionButtonTemplate the panel lays over whichever
--- action button the mouse is on) runs this macro, line by line:
+-- apply button (an InsecureActionButtonTemplate that AttachSecureApply lays
+-- over whichever panel or Variant Builder button the mouse is on) runs this
+-- macro, line by line:
 --
 --   /click MacroExitButton             Blizzard closes the window; its OnHide saves the player's typing
 --   /click CobysLinkepediaMacroWrite   EditMacro with the window closed: nothing listens, nothing refills
@@ -25,8 +26,9 @@
 -- lines after them. Reopening scrolls the list to the top: a macro further
 -- down than the visible buttons is saved but not reselected, and the status
 -- line says so. The apply button does nothing in combat, where EditMacro is
--- refused anyway. /lp test MacroTokens covers the staging, the closed-window
--- write and (with one prompted click) the whole sequence.
+-- refused anyway. /lp test MacroTokenText covers the text rules; /lp test
+-- MacroTokens the apply macro, the closed-window write and (with one
+-- prompted click) the whole sequence.
 
 local MacroTokens = CobysLinkepedia.MacroTokens
 local Linkify = CobysLinkepedia.Linkify
@@ -282,11 +284,11 @@ local function AimPending()
   Status(change.message .. " Select the macro again to keep editing.", true)
 end
 
--- The secure buttons the apply macro clicks. Created once at load: /click
--- resolves a name to the first frame registered under it.
+-- The apply button, and the buttons its macro clicks: two plain named
+-- buttons for our own steps and the click delegate. Created once at load,
+-- since /click resolves a name to the first frame registered under it.
 local applyButton = CreateFrame("Button", APPLY_BUTTON, UIParent, "InsecureActionButtonTemplate")
-applyButton:RegisterForClicks("LeftButtonUp")
-applyButton:SetAttribute("useOnKeyDown", false)
+CobySuite_CobysLinkepedia.UI.ConfigureSecureClicker(applyButton)
 applyButton:Hide()
 
 local writeButton = CreateFrame("Button", WRITE_BUTTON, UIParent)
@@ -295,13 +297,7 @@ writeButton:SetScript("OnClick", WritePending)
 local aimButton = CreateFrame("Button", AIM_BUTTON, UIParent)
 aimButton:SetScript("OnClick", AimPending)
 
-selectDelegate = CreateFrame("Button", SELECT_BUTTON, UIParent, "InsecureActionButtonTemplate")
-selectDelegate:SetSize(1, 1)
-selectDelegate:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", 0, 0)
-selectDelegate:SetAlpha(0)
-selectDelegate:RegisterForClicks("LeftButtonUp")
-selectDelegate:SetAttribute("useOnKeyDown", false)
-selectDelegate:SetAttribute("type", "click")
+selectDelegate = CobySuite_CobysLinkepedia.UI.CreateClickDelegate(SELECT_BUTTON)
 
 -- PreClick stages the hovered button's change and arms the macro; a refused
 -- change leaves the button without an action, so the click does nothing
@@ -401,12 +397,11 @@ end
 -- The crafted or reagent rank a link carries, when a captured variant of the
 -- item has that rank
 local function LinkRank(link, itemID)
-  if not C_TradeSkillUI then return nil end
   local ok, quality = pcall(C_TradeSkillUI.GetItemCraftedQualityByItemInfo, link)
   if not ok or type(quality) ~= "number" then
     ok, quality = pcall(C_TradeSkillUI.GetItemReagentQualityByItemInfo, link)
   end
-  if not ok or type(quality) ~= "number" or (issecretvalue and issecretvalue(quality)) then return nil end
+  if not ok or type(quality) ~= "number" or Utilities.IsSecret(quality) then return nil end
   if quality > 0 and Database.MatchVariant(itemID, quality, nil) then return quality end
   return nil
 end
@@ -444,8 +439,8 @@ end
 -- item's token in its place; nothing changes until that is clicked. Crafted
 -- gear with a quality and gear on an upgrade track get a saved-variant token
 -- (${v=N}, saved when the offer is taken), since only the exact link names
--- that one variant; everything else gets ${i=ID}, with ~R<n> for a reagent
--- rank a captured variant has.
+-- that one variant; everything else gets ${i=ID}, with ~R<n> for a crafted
+-- or reagent rank a captured variant has.
 local function OnInsertLink(link)
   if not MacroFrameText or not MacroFrameText:HasFocus() then return end
   if type(link) ~= "string" or not strfind(link, "item:", 1, true) then return end

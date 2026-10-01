@@ -1,6 +1,7 @@
 -- Config Window: the addon's settings window, the suite's standard one
 -- (CobySuite.UI.CreateSettingsWindow): a sidebar of categories, staged edits
--- that Apply writes through Config.Set, Cancel and Defaults. Opened from
+-- that Apply writes through Config.Set, Cancel and Defaults, and a Guide
+-- button beside Defaults that opens the feature guide. Opened from
 -- /lp settings, the minimap button and the Options > AddOns entry
 -- (registered at the bottom). Built at load, so opening it never creates
 -- frames in combat; the controls are painted from config on every show.
@@ -20,7 +21,8 @@ end
 
 local window = UI.CreateSettingsWindow({
   name = "CobysLinkepediaConfigWindow",
-  title = "Coby's Linkepedia - Settings",
+  title = Utilities.WrapColor(Utilities.Colors.TEXT_TEAL, "Coby's Linkepedia") .. " Settings",
+  icon = CobysLinkepedia.ICON,
   config = Config,
   width = 620,
   height = 420,
@@ -33,6 +35,13 @@ local window = UI.CreateSettingsWindow({
   onApply = function()
     CobysLinkepedia.Debug.Log("CONFIG", "Settings applied")
   end,
+  footerButtons = {
+    {
+      text = "Guide", width = 80,
+      tooltip = "Open the feature guide: what each part of Coby's Linkepedia does.",
+      onClick = function() if CobysLinkepedia.Guide.Toggle then CobysLinkepedia.Guide.Toggle() end end,
+    },
+  },
   categories = {
     {
       key = "autocomplete", label = "Autocomplete",

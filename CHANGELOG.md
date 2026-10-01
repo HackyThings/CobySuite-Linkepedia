@@ -4,6 +4,24 @@ All notable changes to Coby's Linkepedia are documented here. Format follows [Ke
 
 ## [Unreleased]
 
+## [2.0.2] - 2026-10-01
+
+### Added
+
+- **What's New window:** after an update, a window opens once with what changed in every version since the one you last played. `/lp changelog` (or `/lp whatsnew`) opens it any time.
+- A fresh install opens the feature guide at its first section, the item database, with a **Build Database** button right there to start your first build, and an **Expand Database** button beside it (also in Keeping it current) that adds only the items your database is missing. Shift-click and Ctrl+Shift-click speed them up as in the search window. It replaces the old welcome window.
+- The settings window has a **Guide** button beside Defaults that opens the feature guide.
+
+### Changed
+
+- `/lp guide` is now the guide's command (`/lp tutorial` still works), and `/lp options` opens the settings too. Typing `/lp settings` again closes the settings window, and typing just `/lp` opens the search window, as the other Coby addons open their main window (`/lp help` lists every command).
+- The settings, guide and changelog windows show the Linkepedia book icon in their title bar, the settings title shows the addon's name in its teal, and the guide says at the bottom how to open it again.
+
+### Fixed
+
+- An open Variants tab no longer keeps showing the recipe scan's old progress after you reset the item database; it updates at once.
+- Dragging the corner of the search or settings window stops at the edge of the screen, so the corner can no longer end up off screen where you can't grab it.
+
 ## [2.0.1] - 2026-09-29
 
 ### Changed
@@ -49,6 +67,7 @@ Coby's Linkepedia 2.0 is a complete rewrite of Linkepedia (last released as 1.5.
 - If the saved item database is damaged, it is cleared at login and a dialog offers to rebuild it. Favorites, history and settings are kept.
 - English game clients are supported: capitalisation is ignored for the letters A to Z, and a quoted search such as `"ring"` matches whole words.
 
-[Unreleased]: https://github.com/HackyThings/CobySuite-Linkepedia/compare/v2.0.1...HEAD
+[Unreleased]: https://github.com/HackyThings/CobySuite-Linkepedia/compare/v2.0.2...HEAD
+[2.0.2]: https://github.com/HackyThings/CobySuite-Linkepedia/releases/tag/v2.0.2
 [2.0.1]: https://github.com/HackyThings/CobySuite-Linkepedia/releases/tag/v2.0.1
 [2.0.0]: https://github.com/HackyThings/CobySuite-Linkepedia/releases/tag/v2.0.0

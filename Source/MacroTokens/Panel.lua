@@ -94,6 +94,10 @@ local function SetOpen(open)
   ApplyOpenState()
 end
 
+-- For the Taint suite: open or close the panel as its tab and close button
+-- do, and whether it is open
+MacroTokens._test = { SetOpen = SetOpen, IsOpen = IsOpen }
+
 -------------------------------------------------------------------------------
 -- Width drag
 --
@@ -284,7 +288,7 @@ end
 local function BuildTokenRow(row)
   row:RegisterForClicks("LeftButtonUp")
 
-  row.Highlight = CobySuite_CobysLinkepedia.UI.AddHoverHighlight(row, { 1, 1, 1, 0.08 })
+  CobySuite_CobysLinkepedia.UI.AddHoverHighlight(row, { 1, 1, 1, 0.08 })
 
   row.Icon = row:CreateTexture(nil, "ARTWORK")
   row.Icon:SetSize(ICON_SIZE, ICON_SIZE)
@@ -420,7 +424,7 @@ end
 local function InitFindRow(row, pos)
   if not row._built then
     row:RegisterForClicks("LeftButtonUp")
-    row.Highlight = CobySuite_CobysLinkepedia.UI.AddHoverHighlight(row, { 1, 1, 1, 0.08 })
+    CobySuite_CobysLinkepedia.UI.AddHoverHighlight(row, { 1, 1, 1, 0.08 })
 
     row.Icon = row:CreateTexture(nil, "ARTWORK")
     row.Icon:SetSize(ICON_SIZE, ICON_SIZE)
@@ -732,8 +736,8 @@ local function Build()
       CobysLinkepedia.Events.SavedVariantsChanged })
 end
 
--- Called once Blizzard_MacroUI has loaded (Editor.lua), and again by
--- EnsurePanel when the build had to wait for combat to end
+-- Called once Blizzard_MacroUI has loaded (Editor.lua), and by EnsurePanel
+-- right after the build (it does nothing until the macro window has loaded)
 function MacroTokens.AttachPanel()
   if not panel or not MacroFrame or panel._attached then return end
   panel._attached = true
@@ -754,9 +758,8 @@ end
 function MacroTokens.EnsurePanel()
   if panel then return end
   if InCombatLockdown() then
-    EventUtil.RegisterOnceFrameEventAndCallback("PLAYER_REGEN_ENABLED", function()
-      MacroTokens.EnsurePanel()
-    end)
+    -- Queued once, keyed by this function, however often it is called
+    CobySuite_CobysLinkepedia.Utilities.RunOutOfCombat(MacroTokens.EnsurePanel)
     return
   end
   Build()
