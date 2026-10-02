@@ -167,9 +167,9 @@ end
 -------------------------------------------------------------------------------
 local deletePopup = Utilities.CreateDialogPopup({
   name = "CobysLinkepediaDeleteVariantPopup",
-  title = "Delete Saved Variant",
+  icon = CobysLinkepedia.ICON,
+  title = "Delete this saved variant?",
   width = 400,
-  height = 170,
   confirmText = "Delete",
   danger = true,
   hidden = true,
@@ -193,11 +193,16 @@ function Search.DeleteSavedVariant(id)
     return true
   end
   deletePopup.variantID = id
-  deletePopup:SetBody(("%s is used by %s: %s.\n\nAfter a delete those macros send %s as typed.")
-    :format(Linkify.FormatVariantToken(id), #macros == 1 and "a macro" or (#macros .. " macros"),
-      table.concat(macros, ", "), Linkify.FormatVariantToken(id)))
+  deletePopup:SetBody(Search.DeleteVariantPromptBody(id, macros))
   deletePopup:Show()
   return false
+end
+
+-- The delete confirmation's text for saved variant id, used by macros
+function Search.DeleteVariantPromptBody(id, macros)
+  return ("%s is used by %s: %s.\n\nAfter a delete those macros send %s as typed.")
+    :format(Linkify.FormatVariantToken(id), #macros == 1 and "a macro" or (#macros .. " macros"),
+      table.concat(macros, ", "), Linkify.FormatVariantToken(id))
 end
 
 -------------------------------------------------------------------------------

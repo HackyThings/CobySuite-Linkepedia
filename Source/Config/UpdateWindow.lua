@@ -28,9 +28,9 @@ function Config.ShowPatchDialog()
   -- keeps it a singleton
   local popup = Utilities.CreateDialogPopup({
     name = "CobysLinkepediaPatchDialog",
+    icon = CobysLinkepedia.ICON,
     title = "WoW Updated",
     width = 380,
-    height = 160,
     body = "WoW has been updated. Check for the items it added?\n" ..
       "Your database is kept; only new item IDs are scanned.",
     confirmText = "Check Now",

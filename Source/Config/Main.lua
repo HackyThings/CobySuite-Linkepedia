@@ -130,7 +130,7 @@ function Config.HandleSetCommand(input)
   end
 
   if not Config.IsValidOption(key) then
-    if Msg then Msg(CobysLinkepedia.Utilities.WrapColor("FF4D4D", "Unknown setting: " .. key)) end
+    if Msg then Msg(CobysLinkepedia.Utilities.WrapColor(CobysLinkepedia.Utilities.Colors.WARNING_RED, "Unknown setting: " .. key)) end
     return
   end
 
@@ -151,7 +151,7 @@ function Config.HandleSetCommand(input)
   if ok then
     Msg(key .. " = " .. tostring(parsed))
   else
-    Msg(CobysLinkepedia.Utilities.WrapColor("FF4D4D", "Invalid value for " .. key .. ": " .. tostring(reason)))
+    Msg(CobysLinkepedia.Utilities.WrapColor(CobysLinkepedia.Utilities.Colors.WARNING_RED, "Invalid value for " .. key .. ": " .. tostring(reason)))
   end
 end
 

@@ -15,9 +15,10 @@ local MEMORY_INTERVAL = 30
 local FormatKB = CobysLinkepedia.Utilities.FormatKB
 local FormatUptime = CobysLinkepedia.Utilities.FormatDuration
 
-local function GreenRed(val, text)
+-- Green while it holds, gray when not: an idle state is no error
+local function GreenGray(val, text)
   local colors = Utilities.Colors
-  return Utilities.WrapColor(val and colors.TEXT_GREEN or colors.TEXT_RED, text)
+  return Utilities.WrapColor(val and colors.TEXT_GREEN or colors.DISABLED_GRAY, text)
 end
 
 -- Counts that rarely change are kept between polls: the variant total until
@@ -111,14 +112,14 @@ local METRICS = {
     label = "Database Items",
     getValue = function()
       local count = CobysLinkepedia.Database.GetCount and CobysLinkepedia.Database.GetCount() or 0
-      return tostring(count)
+      return BreakUpLargeNumbers(count)
     end,
     tooltip = "Total items stored in the item database",
   },
   {
     label = "Captured Variants",
     getValue = function()
-      return tostring(CapturedVariantCount())
+      return BreakUpLargeNumbers(CapturedVariantCount())
     end,
     tooltip = "Distinct item variants captured from gameplay",
   },
@@ -126,7 +127,7 @@ local METRICS = {
     label = "Pending Items",
     getValue = function()
       if COBYS_LINKEPEDIA_DB and COBYS_LINKEPEDIA_DB.scanState and COBYS_LINKEPEDIA_DB.scanState.pendingIDs then
-        return tostring(#COBYS_LINKEPEDIA_DB.scanState.pendingIDs)
+        return BreakUpLargeNumbers(#COBYS_LINKEPEDIA_DB.scanState.pendingIDs)
       end
       return "0"
     end,
@@ -137,9 +138,9 @@ local METRICS = {
     getValue = function()
       local status = CobysLinkepedia.Scanner.GetStatus and CobysLinkepedia.Scanner.GetStatus()
       if status and status.isActive then
-        return GreenRed(true, "Yes") .. "  (" .. (status.scanMode or "?") .. ")"
+        return GreenGray(true, "Yes") .. "  (" .. (status.scanMode or "?") .. ")"
       end
-      return GreenRed(false, "No")
+      return GreenGray(false, "No")
     end,
     tooltip = "Whether a scan is currently in progress",
   },
@@ -176,7 +177,7 @@ local function CreateStatsWindow()
   if statsWindow then return statsWindow end
 
   local ROW_H = 18
-  local LABEL_W = 140
+  local LABEL_W = 170
   local PAD = 10
   local numMetrics = #METRICS
   local winH = numMetrics * ROW_H + 50
@@ -185,7 +186,8 @@ local function CreateStatsWindow()
   -- window has always shown the template art alone.
   local f = CobySuite_CobysLinkepedia.UI.CreateWindow({
     name = "CobysLinkepediaStatsWindow",
-    title = "Coby's Linkepedia Stats",
+    title = Utilities.WrapColor(Utilities.Colors.TEXT_TEAL, "Coby's Linkepedia") .. " Stats",
+    icon = CobysLinkepedia.ICON,
     width = 340,
     height = winH,
     solidBackground = false,
@@ -196,7 +198,7 @@ local function CreateStatsWindow()
 
   -- the shared metric rows (CobySuite.UI.CreateMetricList)
   f._metricList = CobySuite_CobysLinkepedia.UI.CreateMetricList(f, METRICS, {
-    labelWidth = LABEL_W, padding = PAD, top = 28, errorText = "|cFFFF4D4Derror|r",
+    labelWidth = LABEL_W, padding = PAD, top = 28, errorText = Utilities.WrapColor(Utilities.Colors.WARNING_RED, "error"),
   })
 
   -- Refresh logic

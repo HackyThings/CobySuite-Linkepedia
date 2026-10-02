@@ -18,7 +18,10 @@
 --     chatFallback  = function(title, message) end,
 --   })
 --
--- Returns: { Show(opts), DismissAll(), Suspend(), Resume(), GetCounts() }
+-- Returns: { Show(opts), DismissAll(), Suspend(), Resume(), GetCounts(), Visible() }
+-- Show returns the toast's frame when it shows at once (nil when it waits
+-- or goes to chat); Visible() lists the toast frames on screen, newest first
+-- (read only: for a Verify scene to outline one).
 --
 -- Capacity: at most maxVisible toasts exist at once. A new one at capacity
 -- releases the oldest at once (no fade), so a burst of any size never holds
@@ -37,7 +40,6 @@ function UI.NewToast(opts)
   local DEFAULT_DURATION = opts.defaultDuration or 4
   local FADE_IN         = opts.fadeInDuration or 0.3
   local FADE_OUT        = opts.fadeOutDuration or 0.5
-  local DEFAULT_ACCENT  = opts.defaultAccentColor or { 0.5, 0.5, 0.5 }
   local utils           = opts.utilities or CobySuite_CobysLinkepedia.Utilities
   local positionFn      = opts.position
   local isAvailableFn   = opts.isAvailable or function() return true end
@@ -47,6 +49,7 @@ function UI.NewToast(opts)
   local TC = utils.Colors or CobySuite_CobysLinkepedia.Utilities.Colors
   local Fonts = utils.Fonts or CobySuite_CobysLinkepedia.Utilities.Fonts
   local Backdrops = utils.Backdrops or CobySuite_CobysLinkepedia.Utilities.Backdrops
+  local DEFAULT_ACCENT = opts.defaultAccentColor or TC.DISABLED_GRAY
 
   local pool = {}
   local activeStack = {}
@@ -153,10 +156,10 @@ function UI.NewToast(opts)
     local closeText = f.closeBtn:CreateFontString(nil, "OVERLAY", Fonts.SMALL)
     closeText:SetAllPoints()
     closeText:SetText("\195\151")
-    local dg = TC.DISABLED_GRAY
+    local dg, hw = TC.DISABLED_GRAY, TC.HIGHLIGHT_WHITE
     closeText:SetTextColor(dg[1], dg[2], dg[3])
     f.closeBtn:SetScript("OnClick", function() DismissToast(f) end)
-    f.closeBtn:SetScript("OnEnter", function() closeText:SetTextColor(1, 1, 1) end)
+    f.closeBtn:SetScript("OnEnter", function() closeText:SetTextColor(hw[1], hw[2], hw[3]) end)
     f.closeBtn:SetScript("OnLeave", function() closeText:SetTextColor(dg[1], dg[2], dg[3]) end)
 
     -- Fade in animation (alpha + slide from right)
@@ -301,7 +304,7 @@ function UI.NewToast(opts)
       return
     end
 
-    ShowNow(showOpts)
+    return ShowNow(showOpts)
   end
 
   ShowNow = function(showOpts)
@@ -359,6 +362,7 @@ function UI.NewToast(opts)
     toast:Show()
     RepositionStack()
     toast.fadeInAG:Play()
+    return toast
   end
 
   function inst.DismissAll()
@@ -398,6 +402,14 @@ function UI.NewToast(opts)
       if toast:IsShown() then visible = visible + 1 end
     end
     return { active = #activeStack, visible = visible, pooled = #pool, created = created, queued = #queue }
+  end
+
+  function inst.Visible()
+    local list = {}
+    for _, toast in ipairs(activeStack) do
+      if toast:IsShown() then list[#list + 1] = toast end
+    end
+    return list
   end
 
   return inst

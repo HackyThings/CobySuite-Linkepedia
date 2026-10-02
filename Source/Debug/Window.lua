@@ -7,6 +7,7 @@
 CobysLinkepedia.DebugWindow = CobySuite_CobysLinkepedia.Debug.NewWindow({
   windowName = "CobysLinkepediaDebugWindow",
   title = "Coby's Linkepedia Debug Log",
+  icon = CobysLinkepedia.ICON,
   logger = CobysLinkepedia.Debug,
   -- Position and size, kept like the other windows' (the table exists by
   -- the first show)
@@ -19,7 +20,7 @@ CobysLinkepedia.DebugWindow = CobySuite_CobysLinkepedia.Debug.NewWindow({
       key = "WipeButton",
       text = "Wipe All Data",
       width = 110,
-      textColor = {1, 0.3, 0.3},
+      textColor = CobySuite_CobysLinkepedia.Utilities.Colors.WARNING_RED,
       side = "left",
       onClick = function(w) w:WipeAllData() end,
     },
@@ -33,12 +34,12 @@ CobysLinkepedia.DebugWindow = CobySuite_CobysLinkepedia.Debug.NewWindow({
 -------------------------------------------------------------------------------
 local wipePopup = CobySuite_CobysLinkepedia.UI.CreateDialogPopup({
   name = "CobysLinkepediaWipePopup",
+  icon = CobysLinkepedia.ICON,
   title = "Wipe All Coby's Linkepedia Data",
   width = 400,
-  height = 160,
   body = "This will delete ALL Coby's Linkepedia data:\n" ..
-    "database, config, favorites, history, window state, and debug log.\n\n" ..
-    "This cannot be undone. Requires /reload.",
+    "the item database, saved variants, settings, favorites, history, window positions and the debug log.\n\n" ..
+    "This cannot be undone. Your interface reloads right after.",
   confirmText = "Wipe Everything",
   danger = true,
   hidden = true,

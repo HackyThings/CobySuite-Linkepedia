@@ -4,6 +4,29 @@ All notable changes to Coby's Linkepedia are documented here. Format follows [Ke
 
 ## [Unreleased]
 
+## [2.0.3] - 2026-10-01
+
+### Changed
+
+- **Settings redesigned:** five pages with live examples, your database's status and buttons, your key bindings and a sample notice. Every setting keeps its value.
+- **Stats tab redesigned:** your database's status and buttons, then a tile for each quality and item type with its share. Hover a tile for its percent.
+- `/lp help` now lists `/link` too.
+- Hover the filters' **Clear**, **Clear History** and the folded macro token icon to see what they do.
+- The scan footer and `/lp status` name each step the same way: Finding items, Waiting for item data, Retrying. Scan messages call the IDs no longer asked about "skipped".
+- Shorter tooltips, settings descriptions and first guide section; the Build and Expand buttons' tooltips say only what they do.
+- The search, status, stats and debug windows show the Linkepedia icon on their titles.
+- Item counts use thousands separators (176,228). `/lp stats` shows an idle scan in gray, not red.
+- Dialogs fit their text, with no empty space above their buttons.
+
+### Fixed
+
+- Search results show long words and six-digit item IDs in full; the search window is now at least 1005 wide. Column widths you set yourself are kept.
+- The Variants tab's empty hint no longer runs under the search box.
+- `/lp status` keeps the real "Highest item ID" after you cancel a scan.
+- The Variant Builder saves the rank it built, even when the item's rank details arrive mid-preview.
+- `/lp status` pointed to a settings page that no longer exists when the idle scan is off.
+- The Item tokens setting no longer says it hides the macro window's token panel; turned off, tokens are sent as typed.
+
 ## [2.0.2] - 2026-10-01
 
 ### Added
@@ -67,7 +90,8 @@ Coby's Linkepedia 2.0 is a complete rewrite of Linkepedia (last released as 1.5.
 - If the saved item database is damaged, it is cleared at login and a dialog offers to rebuild it. Favorites, history and settings are kept.
 - English game clients are supported: capitalisation is ignored for the letters A to Z, and a quoted search such as `"ring"` matches whole words.
 
-[Unreleased]: https://github.com/HackyThings/CobySuite-Linkepedia/compare/v2.0.2...HEAD
+[Unreleased]: https://github.com/HackyThings/CobySuite-Linkepedia/compare/v2.0.3...HEAD
+[2.0.3]: https://github.com/HackyThings/CobySuite-Linkepedia/releases/tag/v2.0.3
 [2.0.2]: https://github.com/HackyThings/CobySuite-Linkepedia/releases/tag/v2.0.2
 [2.0.1]: https://github.com/HackyThings/CobySuite-Linkepedia/releases/tag/v2.0.1
 [2.0.0]: https://github.com/HackyThings/CobySuite-Linkepedia/releases/tag/v2.0.0

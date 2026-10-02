@@ -77,7 +77,7 @@ local function FilterDropDown(key, width, point, labels, values)
 end
 
 local ROW_HEIGHT = 26
-local GAP = 8
+local GAP = Utilities.Spacing.GROUP_GAP
 local QUALITY_WIDTH, TYPE_WIDTH, EXPANSION_WIDTH, CLEAR_WIDTH = 140, 140, 130, 60
 local MODE_WIDTH = 104
 
@@ -106,6 +106,7 @@ function Search.InitFilterBar(window)
     size = { CLEAR_WIDTH, 22 },
     fontSize = 11,
     point = { "RIGHT", 0, 0 },
+    tooltip = "Clear the quality, type and expansion filters",
     onClick = function()
       filterState.type = false
       filterState.quality = false

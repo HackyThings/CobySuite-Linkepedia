@@ -5,18 +5,48 @@
 -- /lp settings, the minimap button and the Options > AddOns entry
 -- (registered at the bottom). Built at load, so opening it never creates
 -- frames in combat; the controls are painted from config on every show.
+--
+-- Each feature's on/off switch sits on its section header or card, and the
+-- rows that tune it are disabled while it is off. The examples
+-- (Config/Examples.lua) show what the staged settings do and change
+-- nothing; the Item database card's buttons start scans at once and never
+-- apply staged settings.
 
 local Config = CobysLinkepedia.Config
 local Opt = Config.Options
+local Examples = Config.Examples
 local Utilities = CobysLinkepedia.Utilities
 local UI = CobySuite_CobysLinkepedia.UI
 
-local function Seconds(decimals)
-  return function(value) return ("%." .. decimals .. "f s"):format(value) end
+local ICONS = "Interface\\Icons\\"
+
+local function Seconds(value)
+  if value == 0 then return "Instant" end
+  return ("%.2f s"):format(value)
+end
+
+local function Items(value)
+  if value == 1 then return "1 item" end
+  return ("%d items"):format(value)
+end
+
+local function History(value)
+  if value == 0 then return "Off" end
+  return Items(value)
 end
 
 local function PerSecond(value)
-  return ("%d/s"):format(value)
+  return ("%d a second"):format(value)
+end
+
+local function On(key)
+  return function(get) return get(key) end
+end
+
+local function BindingText(action)
+  local key = GetBindingKey(action)
+  if key then return GetBindingText(key, 1) end
+  return Utilities.WrapColor(Utilities.Colors.DISABLED_GRAY, "Not bound")
 end
 
 local window = UI.CreateSettingsWindow({
@@ -24,8 +54,7 @@ local window = UI.CreateSettingsWindow({
   title = Utilities.WrapColor(Utilities.Colors.TEXT_TEAL, "Coby's Linkepedia") .. " Settings",
   icon = CobysLinkepedia.ICON,
   config = Config,
-  width = 620,
-  height = 420,
+  size = "standard",
   persist = {
     svTable = function() return COBYS_LINKEPEDIA_WINDOW_STATE end,
     key = "configWindow",
@@ -46,89 +75,170 @@ local window = UI.CreateSettingsWindow({
     {
       key = "autocomplete", label = "Autocomplete",
       build = function(panel)
-        panel:Section("Chat Autocomplete")
-        panel:Checkbox{
-          key = Opt.AUTOCOMPLETE_ENABLED, label = "Enable autocomplete",
-          tooltip = "Type [ and a letter in chat to get a list of matching items.",
+        panel:Section("Chat autocomplete", {
+          icon = ICONS .. "UI_Chat",
+          subtitle = "Type [ and a few letters in any chat box, then pick an item from the list.",
+          switchKey = Opt.AUTOCOMPLETE_ENABLED,
+          switchTooltip = "Turn chat autocomplete on or off.",
+        })
+        panel:Slider{
+          key = Opt.AUTOCOMPLETE_DELAY, label = "Wait before suggesting",
+          min = 0, max = 2, step = 0.05, format = Seconds, minLabel = "Instant", maxLabel = "2 s",
+          description = "How long the list waits after your last key press. Shorter feels quicker; longer skips searches while you type fast.",
+          enabledWhen = On(Opt.AUTOCOMPLETE_ENABLED),
         }
         panel:Slider{
-          key = Opt.AUTOCOMPLETE_DELAY, label = "Autocomplete delay",
-          tooltip = "How long after your last keystroke the list updates. Default: 0.25 s",
-          min = 0, max = 2, step = 0.05, format = Seconds(2),
-          enabledWhen = function(get) return get(Opt.AUTOCOMPLETE_ENABLED) end,
+          key = Opt.MAX_DROPDOWN_RESULTS, label = "Suggestions shown",
+          min = 1, max = Examples.MAX_ROWS, step = 1, format = Items,
+          description = "How many matches the list shows at once.",
+          enabledWhen = On(Opt.AUTOCOMPLETE_ENABLED),
         }
-        panel:Slider{
-          key = Opt.MAX_DROPDOWN_RESULTS, label = "Max dropdown results",
-          tooltip = "How many matches the list shows at once. Default: 10",
-          min = 1, max = 10, step = 1,
-          enabledWhen = function(get) return get(Opt.AUTOCOMPLETE_ENABLED) end,
+        panel:Preview{
+          caption = "Example",
+          height = Examples.AUTOCOMPLETE_HEIGHT,
+          build = Examples.BuildAutocomplete,
+          refresh = Examples.PaintAutocomplete,
+          ticker = 1,   -- follows a build; repaints from the cached search
+          dimWhen = function(get) return not get(Opt.AUTOCOMPLETE_ENABLED) end,
+          description = "Up and Down move through the list, Tab or a click picks, and Enter still sends your message.",
         }
       end,
     },
     {
-      key = "scanning", label = "Scanning",
+      key = "linking", label = "Linking",
       build = function(panel)
-        panel:Section("Item Scan")
-        panel:Dropdown{
-          key = Opt.SCAN_SPEED, label = "Scan speed",
-          tooltip = "How many items each frame of a scan handles. Slow leaves more frame time for the game; Fast finishes sooner. Default: Medium",
-          labels = { "Slow", "Medium", "Fast" }, values = { "Slow", "Medium", "Fast" },
+        panel:BeginCard{
+          title = "Link by name",
+          description = "Send an item's exact name in brackets and it goes out as a link.",
+          icon = ICONS .. "INV_Misc_Note_02",
+          switchKey = Opt.AUTO_LINKIFY_ON_SEND,
+          switchTooltip = "Turn linking by name on or off.",
         }
-        panel:Section("Idle Scan")
-        panel:Checkbox{
-          key = Opt.IDLE_SCAN_ENABLED, label = "Enable idle background scan",
-          tooltip = "Asks the server again, in the background and never in combat, for the items a scan held back.",
+        panel:Preview{
+          caption = "Example",
+          text = Examples.LinkByNameText,
+          dimWhen = function(get) return not get(Opt.AUTO_LINKIFY_ON_SEND) end,
+          description = "Links are made only when you send. /run and /script lines are never changed. Add ~R2 or ~270 for a captured variant's rank or item level.",
         }
+        panel:EndCard()
+        panel:BeginCard{
+          title = "Item tokens",
+          description = "Write ${i=ID}, ${n=name} or ${v=N} and it sends as a link.",
+          icon = ICONS .. "INV_Misc_ScrollUnrolled01",
+          switchKey = Opt.EXPAND_ITEM_TOKENS,
+          switchTooltip = "Turn item tokens on or off, in chat lines and macros.",
+        }
+        panel:Preview{
+          caption = "Example",
+          text = Examples.TokensText,
+          dimWhen = function(get) return not get(Opt.EXPAND_ITEM_TOKENS) end,
+          description = "Tokens become links in typed chat and macro chat lines. Turn this off to send tokens as typed.",
+        }
+        panel:EndCard()
+      end,
+    },
+    {
+      key = "database", label = "Item database",
+      build = function(panel)
+        panel:Section("Your item database")
+        panel:StatusCard{
+          icon = ICONS .. "INV_Misc_Book_09",
+          ticker = 0.5,
+          state = function() return (Examples.DatabaseState()) end,
+          stateText = function() return (select(2, Examples.DatabaseState())) end,
+          title = function() return (select(3, Examples.DatabaseState())) end,
+          description = function() return (select(4, Examples.DatabaseState())) end,
+          actions = Examples.DatabaseActions(),
+        }
+        panel:Note{ text = Examples.SpeedNote, color = Utilities.Colors.CAUTION_ORANGE }
+
+        panel:Section("Scan speed")
+        panel:Radio{
+          key = Opt.SCAN_SPEED,
+          options = {
+            { value = "Slow", label = "Slow", description = "Smoothest play while it runs",
+              tooltip = "Asks for up to 50 items at a time, then waits 0.5 s for answers." },
+            { value = "Medium", label = "Medium", description = "A good balance for most players",
+              tooltip = "Asks for up to 100 items at a time, then waits 0.3 s for answers." },
+            { value = "Fast", label = "Fast", description = "Finishes soonest, can cost some frames",
+              tooltip = "Asks for up to 200 items at a time, then waits 0.1 s for answers." },
+          },
+          description = "Hold Shift as you click Build or Expand for one faster scan, or Ctrl+Shift for the fastest. Both can stutter while they run.",
+        }
+
+        panel:Section("Idle scan", {
+          icon = ICONS .. "INV_Misc_PocketWatch_01",
+          subtitle = "While you play, quietly asks again for items a scan could not get. Never in combat or during a scan. The search window's Idle Scan box is the same switch.",
+          switchKey = Opt.IDLE_SCAN_ENABLED,
+          switchTooltip = "Turn the idle scan on or off.",
+        })
         panel:Slider{
-          key = Opt.IDLE_SCAN_RATE, label = "Idle scan speed",
-          tooltip = "Item IDs the idle scan checks each second. Default: 5",
+          key = Opt.IDLE_SCAN_RATE, label = "Items per second",
           min = 1, max = 20, step = 1, format = PerSecond,
-          enabledWhen = function(get) return get(Opt.IDLE_SCAN_ENABLED) end,
+          description = function(w)
+            return "Higher catches up sooner; lower asks the server for less. " .. Examples.IdleEstimate(w)
+          end,
+          enabledWhen = On(Opt.IDLE_SCAN_ENABLED),
         }
       end,
     },
     {
-      key = "chat", label = "Chat & Linking",
+      key = "search", label = "Search window",
       build = function(panel)
-        panel:Section("On Send")
+        panel:Section("Item lists", { icon = ICONS .. "INV_Misc_Spyglass_03" })
         panel:Checkbox{
-          key = Opt.AUTO_LINKIFY_ON_SEND, label = "Auto-linkify [Item Name] on send",
-          tooltip = "When a chat message is sent, [Item Name] becomes that item's link. /run and /script lines are never changed.",
+          key = Opt.SHIFT_HOVER_COMPARISON, label = "Compare with equipped gear on Shift",
+          description = "Hold Shift over an item in any list to see it beside what you wear.",
         }
-        panel:Checkbox{
-          key = Opt.EXPAND_ITEM_TOKENS, label = "Item tokens ${i=ID} and ${n=name} in chat and macros",
-          tooltip = "Tokens become item links when a chat line or a macro line is sent.",
+        panel:Slider{
+          key = Opt.MAX_RECENT_HISTORY, label = "History length",
+          min = 0, max = 200, step = 1, format = History, minLabel = "Off", maxLabel = "200",
+          description = "How many of the items you linked the History tab keeps. At Off, new links are no longer kept and the list empties the next time you link an item; the History tab's Clear History empties it now.",
         }
-        panel:Section("Messages")
-        panel:Dropdown{
-          key = Opt.CHAT_VERBOSITY, label = "Chat message verbosity",
-          tooltip = "Quiet shows only answers and warnings, Normal adds scan notices, Verbose adds per-phase detail.",
-          labels = { "Quiet", "Normal", "Verbose" }, values = { "Quiet", "Normal", "Verbose" },
+        panel:Section("Shortcuts", {
+          icon = ICONS .. "INV_Misc_Key_05",
+          subtitle = "Pick these keys in Options > Keybindings > AddOns, under Coby's Linkepedia.",
+        })
+        panel:Value{
+          label = "Toggle search window",
+          value = function() return BindingText("COBYSLINKEPEDIA_TOGGLE_SEARCH") end,
+          events = { "UPDATE_BINDINGS" },
+        }
+        panel:Value{
+          label = "Toggle quick search",
+          value = function() return BindingText("COBYSLINKEPEDIA_TOGGLE_QUICKSEARCH") end,
+          events = { "UPDATE_BINDINGS" },
+          description = "Quick search is the fastest way to put a link into chat.",
         }
       end,
     },
     {
-      key = "display", label = "Display",
+      key = "messages", label = "Minimap and chat",
       build = function(panel)
-        panel:Section("Buttons and Notices")
+        panel:Section("On screen", { icon = CobysLinkepedia.ICON })
         panel:Checkbox{
           key = Opt.SHOW_MINIMAP_BUTTON, label = "Show minimap button",
-          tooltip = "The book icon at the minimap. The addon compartment entry stays either way.",
+          description = "Left-click opens search, right-click opens these settings. The addon compartment entry stays either way.",
         }
         panel:Checkbox{
-          key = Opt.CAPTURE_TOAST_ENABLED, label = "Capture toast notifications",
-          tooltip = "A small notice at the bottom right each time a new item variant is captured. Default: off",
+          key = Opt.CAPTURE_TOAST_ENABLED, label = "Show new variant notices",
+          description = "A small notice at the bottom right when the addon saves a new version of an item you came across.",
         }
-        panel:Section("Search Window")
-        panel:Checkbox{
-          key = Opt.SHIFT_HOVER_COMPARISON, label = "Shift-hover item comparison",
-          tooltip = "Hold Shift over an item to compare it with what you have equipped.",
+        panel:Button{
+          text = "Show sample notice", width = 160,
+          description = "Shows one now, whether or not the box above is ticked.",
+          onClick = function() Examples.ShowSampleNotice() end,
         }
-        panel:Slider{
-          key = Opt.MAX_RECENT_HISTORY, label = "Max recent history entries",
-          tooltip = "How many recently linked items the History tab keeps. Default: 50",
-          min = 0, max = 200, step = 1,
+        panel:Section("Chat messages")
+        panel:Radio{
+          key = Opt.CHAT_VERBOSITY,
+          options = {
+            { value = "Quiet", label = "Quiet", description = "Only answers to your commands, and warnings" },
+            { value = "Normal", label = "Normal", description = "Also says when a scan starts and finishes" },
+            { value = "Verbose", label = "Detailed", description = "Also reports each step of a scan" },
+          },
         }
+        panel:Preview{ caption = "Example", text = Examples.MessagesText }
       end,
     },
   },
@@ -144,8 +254,8 @@ EventUtil.ContinueOnAddOnLoaded("CobysLinkepedia", function()
     brandColor  = Utilities.Colors.TEXT_TEAL,
     version     = CobysLinkepedia.version,
     description = {
-      "Your personal item encyclopedia. Search, autocomplete and link any item in the game from a database the addon builds on your own client.",
-      "The settings live in the addon's own window.",
+      "Your personal item encyclopedia. Search, autocomplete and link any item in the game from a database the addon builds on your own client, with no addon update needed after a patch.",
+      "The settings live in the addon's own settings window.",
     },
     slash       = "/lp settings",
     onOpen      = function() window:Open() end,

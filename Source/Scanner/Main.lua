@@ -576,6 +576,7 @@ local function StepDiscover()
 
     if COBYS_LINKEPEDIA_DB and COBYS_LINKEPEDIA_DB.scanState then
       COBYS_LINKEPEDIA_DB.scanState.upperBound = discoverMaxFound
+      COBYS_LINKEPEDIA_DB.scanState.highestID = discoverMaxFound
     end
 
     local Msg = CobysLinkepedia.Utilities.Message
@@ -605,8 +606,9 @@ local function StepQuery()
     local itemID = discoverValidIDs[queryIdx]
 
     if not Resolve(itemID) then
-      -- An explicit request, so the server's answer (ITEM_DATA_LOAD_RESULT)
-      -- arrives whatever C_Item.GetItemInfo does under the hood
+      -- Request explicitly instead of relying on C_Item.GetItemInfo to do so;
+      -- the server may answer with ITEM_DATA_LOAD_RESULT or not at all (see
+      -- the dead IDs above)
       CItem_RequestLoad(itemID)
       batchUncachedIDs[#batchUncachedIDs + 1] = itemID
       if #batchUncachedIDs >= batchCap then break end
@@ -789,6 +791,7 @@ local function StepComplete()
     scanState.complete = true
     scanState.lastPosition = discoverMaxFound
     scanState.upperBound = discoverMaxFound
+    scanState.highestID = discoverMaxFound
     scanState.lastScanDate = time()
     scanState.lastMode = scanMode
     -- Replaced every time, an empty queue included, so IDs an earlier scan
@@ -809,7 +812,7 @@ local function StepComplete()
   Debug.State("SCAN", "Scan counts (%s): %d queried, %d stored, %d dead (%d unanswered for the second scan running), %d deferred to the idle queue, %d over the %d cap (asked again by the next scan)",
     scanMode or "?", queried, itemsFound, deadThisScan, silentTwice, deferred, dropped, pendingCap)
   CobysLinkepedia.Utilities.Message(string.format(
-    "Queried %d item IDs: %d stored, %d the server does not have, %d queued for idle retry, %d left for the next scan.",
+    "Checked %d item IDs: %d stored, %d skipped, %d waiting for idle retry, %d left for the next scan.",
     queried, itemsFound, deadThisScan, deferred, dropped), "verbose")
 
   ReleaseScanTables()
@@ -932,9 +935,9 @@ end
 local rebuildIntensity = nil
 local rebuildPopup = CobysLinkepedia.Utilities.CreateDialogPopup({
   name = "CobysLinkepediaRebuildPopup",
-  title = "Rebuild Database",
+  icon = CobysLinkepedia.ICON,
+  title = "Rebuild the item database?",
   width = 400,
-  height = 150,
   confirmText = "Rebuild",
   hidden = true,
 })
@@ -951,6 +954,13 @@ rebuildPopup.ConfirmButton:SetScript("OnClick", function()
   DoStartBuild(rebuildIntensity)
 end)
 
+-- The Rebuild confirmation's text for a database of count items
+function Scanner.RebuildPromptBody(count)
+  return "This will rebuild your item database from scratch.\n" ..
+    "Your current database has " .. BreakUpLargeNumbers(count) .. " items.\n\n" ..
+    "Use Expand to fill in gaps instead."
+end
+
 -- intensity: nil (Scan speed setting), "Boost" or "Max"; see INTENSITY_CAPS
 function Scanner.StartBuild(skipConfirm, intensity)
   if held then
@@ -965,11 +975,7 @@ function Scanner.StartBuild(skipConfirm, intensity)
   local count = Database.GetCount()
   if not skipConfirm and count > 0 then
     rebuildIntensity = intensity
-    rebuildPopup:SetBody(
-      "This will rebuild your item database from scratch.\n" ..
-      "Your current database has " .. count .. " items.\n\n" ..
-      "Use Expand to fill in gaps instead."
-    )
+    rebuildPopup:SetBody(Scanner.RebuildPromptBody(count))
     rebuildPopup:Show()
     return
   end
@@ -1008,7 +1014,7 @@ local function StartExpandScan(intensity)
   Debug.State("SCAN", "Expand scan started (%s): %d stored and %d dead skipped, discovering new IDs...",
     scanIntensity or "normal", skipCount, deadCount)
   CobysLinkepedia.Utilities.Message(string.format(
-    "Discovering new item IDs (skipping %d stored and %d the server does not have)...", skipCount, deadCount), "normal")
+    "Finding missing items (skipping %d stored and %d previously refused or unanswered IDs)...", skipCount, deadCount), "normal")
 end
 
 -- intensity: nil (Scan speed setting), "Boost" or "Max"; see INTENSITY_CAPS
@@ -1085,7 +1091,7 @@ function Scanner.StopScan(notify)
   if notify ~= false then
     CobysLinkepedia.EventBus:Fire(CobysLinkepedia.Events.ScanCancelled)
     CobysLinkepedia.EventBus:Fire(CobysLinkepedia.Events.DatabaseUpdated)
-    CobysLinkepedia.Utilities.Message("Scan cancelled. The items found so far are kept; /lp expand continues the scan.")
+    CobysLinkepedia.Utilities.Message("Scan canceled. The items found so far are kept; /lp expand continues the scan.")
   end
   return true
 end
@@ -1131,6 +1137,11 @@ function Scanner.GetLastScan()
     finishedAt = s.lastScanDate,
     position = s.lastPosition,
     upperBound = s.upperBound,
+    -- The highest item ID a discover pass found. Kept apart from upperBound,
+    -- which a cancel sets to the stopped phase's progress denominator; data
+    -- from before it existed has only upperBound, which a complete scan sets
+    -- to that ID
+    highestID = s.highestID or (s.complete and s.upperBound) or nil,
   }
 end
 
@@ -1306,8 +1317,9 @@ local function IdleTick()
     if IdleSettle(itemID, false) then
       table.remove(pending, idleNext)   -- settled without asking: dead, or sent already
     else
-      -- An explicit request, so the server's answer (ITEM_DATA_LOAD_RESULT)
-      -- arrives whatever C_Item.GetItemInfo does under the hood
+      -- Request explicitly instead of relying on C_Item.GetItemInfo to do so;
+      -- the server may answer with ITEM_DATA_LOAD_RESULT or not at all (see
+      -- the dead IDs above)
       CItem_RequestLoad(itemID)
       idleSession.asked = idleSession.asked + 1
       idleAsked[#idleAsked + 1] = itemID
@@ -1430,7 +1442,7 @@ function Scanner.FindMaxItemID(arg)
   local Utilities = CobysLinkepedia.Utilities
   if arg == "cancel" then
     if Scanner.CancelFindMax() then
-      Utilities.Message("Max item ID scan cancelled.")
+      Utilities.Message("Max item ID scan canceled.")
     else
       Utilities.Message("No max item ID scan is running.")
     end
@@ -1466,8 +1478,8 @@ function Scanner.FindMaxItemID(arg)
       local duration = Now() - job.startedAt
       Debug.Log("SCAN", "FindMax complete: max ID = %d, valid = %d, scanned %d in %.1fs",
         job.maxFound, job.validCount, FINDMAX_CEILING, duration)
-      Utilities.Message(string.format("Max item ID: |cFFFFD100%d|r  (%d valid IDs found in %.1fs)",
-        job.maxFound, job.validCount, duration))
+      Utilities.Message(string.format("Max item ID: %s  (%d valid IDs found in %.1fs)",
+        Utilities.WrapColor(Utilities.Colors.TEXT_GOLD, tostring(job.maxFound)), job.validCount, duration))
     end
   end)
 end

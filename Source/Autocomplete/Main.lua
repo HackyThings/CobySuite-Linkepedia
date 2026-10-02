@@ -418,20 +418,6 @@ CobysLinkepedia.EventBus:Register({ ReceiveEvent = function(_, _, key)
   end
 end }, { CobysLinkepedia.Events.ConfigChanged })
 
--- Dropdown control stubs (implemented by Dropdown.lua)
-function Autocomplete.ShowDropdown(editBox, results, revision) end
-function Autocomplete.HideDropdown(keepSession) end
-function Autocomplete.IsDropdownShown() return false end
-function Autocomplete.GetDisplayedRevision() return nil end
-function Autocomplete.NavigateUp() end
-function Autocomplete.NavigateDown() end
-function Autocomplete.NavigateKey(key) end
-function Autocomplete.SelectCurrent(fallbackToFirst) end
-function Autocomplete.GetSelectedIndex() return 0 end
-function Autocomplete.IsDropdownUnderMouse() return false end
-function Autocomplete.EnsureDropdown() end
-function Autocomplete.AddDropdownOwner(editBox) end
-
 -------------------------------------------------------------------------------
 -- New chat tabs create new edit boxes (HookEditBox is idempotent per box)
 -------------------------------------------------------------------------------

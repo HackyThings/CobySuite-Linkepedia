@@ -107,7 +107,9 @@ local function ToggleSearch()
   end
 end
 
-CobySuite_CobysLinkepedia.Slash.Register({
+-- Kept on the addon table so development checks can read the help lines
+-- (CobySuite.Slash.HelpLines) without printing them
+CobysLinkepedia.SlashOptions = {
   key = "COBYSLINKEPEDIA",
   slashes = { "/lp", "/linkepedia", "/cobyslinkepedia" },
   title = "Coby's Linkepedia",
@@ -140,13 +142,13 @@ CobySuite_CobysLinkepedia.Slash.Register({
     end,
     tests = function() return CobysLinkepedia.Tests end,
     extra = {
-      { name = "build", aliases = { "rebuild" }, help = "Wipe the item database and scan every item ID from scratch (asks first when a database exists)",
+      { name = "build", aliases = { "rebuild" }, help = "Rebuild the item database from scratch (asks first)",
         run = function()
           if CobysLinkepedia.Scanner.StartBuild then
             CobysLinkepedia.Scanner.StartBuild()
           end
         end },
-      { name = "expand", help = "Scan only the item IDs the database does not have yet; also continues an unfinished scan",
+      { name = "expand", help = "Add the items the database lacks, or finish a stopped scan",
         run = function()
           if CobysLinkepedia.Scanner.StartExpand then
             CobysLinkepedia.Scanner.StartExpand()
@@ -164,7 +166,7 @@ CobySuite_CobysLinkepedia.Slash.Register({
             CobysLinkepedia.Scanner.Resume()
           end
         end },
-      { name = "stop", aliases = { "cancel" }, help = "Cancel the running scan; the items found so far are kept",
+      { name = "stop", aliases = { "cancel" }, help = "Cancel the running scan; items found so far are kept",
         run = function()
           if CobysLinkepedia.Scanner.Cancel then
             CobysLinkepedia.Scanner.Cancel()
@@ -176,31 +178,31 @@ CobySuite_CobysLinkepedia.Slash.Register({
             CobysLinkepedia.QuickSearch.Toggle()
           end
         end },
-      { name = "status", help = "Open or close the status window: the database, the scans and the idle scan, updated live",
+      { name = "status", help = "Open or close the live database and scan status window",
         run = function()
           if CobysLinkepedia.Search.ToggleStatusWindow then
             CobysLinkepedia.Search.ToggleStatusWindow()
           end
         end },
-      { name = "stats", help = "Open or close the live stats window: memory, framerate, latency and database counts",
+      { name = "stats", help = "Open or close the live performance stats window",
         run = function()
           if CobysLinkepedia.Search.ToggleStatsWindow then
             CobysLinkepedia.Search.ToggleStatsWindow()
           end
         end },
-      { name = "set", usage = "set <key> <value>", help = "Change a setting by its key, such as /lp set scanSpeed Fast; /lp set alone lists every key and its value",
+      { name = "set", usage = "set <key> <value>", help = "Change a setting by key; alone, lists every key and value",
         run = function(rest)
           if CobysLinkepedia.Config.HandleSetCommand then
             CobysLinkepedia.Config.HandleSetCommand(rest)
           end
         end },
-      { name = "reset", help = "Delete the item database with its captured variants and recipe index (asks first); settings, favorites, history and saved variants are kept",
+      { name = "reset", help = "Delete the item database (asks first); settings and favorites stay",
         run = function()
           if CobysLinkepedia.Database.ShowResetConfirmation then
             CobysLinkepedia.Database.ShowResetConfirmation()
           end
         end },
-      { name = "recipes", usage = "recipes [cancel]", help = "Index which recipes craft which gear, for the Variant Builder (runs by itself after a patch); cancel stops it",
+      { name = "recipes", usage = "recipes [cancel]", help = "Index the recipes the Variant Builder uses; cancel stops it",
         run = function(rest)
           CobysLinkepedia.Scanner.RecipeScanCommand(rest and rest:match("^%s*(%S+)"))
         end },
@@ -208,7 +210,7 @@ CobySuite_CobysLinkepedia.Slash.Register({
         run = function(rest)
           CobysLinkepedia.Search.OpenBuilder(tonumber(rest and rest:match("^%s*(%d+)")))
         end },
-      { name = "findmax", usage = "findmax [cancel]", help = "Scan item IDs 0 to 1,000,000 and report the highest one the game knows; cancel stops it",
+      { name = "findmax", usage = "findmax [cancel]", help = "Find the highest item ID the game knows; cancel stops it",
         run = function(rest)
           if CobysLinkepedia.Scanner.FindMaxItemID then
             CobysLinkepedia.Scanner.FindMaxItemID(rest and rest:match("^%s*(%S+)"))
@@ -222,7 +224,10 @@ CobySuite_CobysLinkepedia.Slash.Register({
         end },
     },
   }),
-})
+  -- /link has its own slash entry below, so the help names it here
+  footer = { "  " .. CobySuite_CobysLinkepedia.Utilities.FormatCommandLine("/link <name>", "Print up to 20 matching item links in your chat frame") },
+}
+CobySuite_CobysLinkepedia.Slash.Register(CobysLinkepedia.SlashOptions)
 
 -------------------------------------------------------------------------------
 -- Chat link lookup command: /link <name>

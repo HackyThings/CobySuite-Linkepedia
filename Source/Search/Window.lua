@@ -4,16 +4,17 @@ local Search = CobysLinkepedia.Search
 local Utilities = CobysLinkepedia.Utilities
 local Debug = CobysLinkepedia.Debug
 
--- The results table is 655px of columns and the detail pane side costs another
--- 324px at the pane's default width (the pane plus its margins), so anything
--- under ~980 shrinks the columns. The old 800 default was 86px too narrow for
--- its own column defaults, which is why ID and Req drew over the scrollbar.
+-- The results table is 653px of columns plus the spacer's 25px minimum, and
+-- the detail pane side costs another 324px at the pane's default width (the
+-- pane plus its margins), so the 1005 minimum fits them unshrunk. The old 800
+-- default was 86px too narrow for its own column defaults, which is why ID
+-- and Req drew over the scrollbar.
 local DETAIL_LEFT_MARGIN = 8     -- the window's edge to the content
 local DETAIL_GAP = 20            -- the content's right edge to the pane
 local DETAIL_RIGHT_MARGIN = 8    -- the pane to the window's edge
-local DEFAULT_WIDTH = 1010
+local DEFAULT_WIDTH = 1040
 local DEFAULT_HEIGHT = 500
-local MIN_WIDTH = 980
+local MIN_WIDTH = 1005
 -- The Variant Builder's options, preview and actions need about 350px of tab
 local MIN_HEIGHT = 440
 
@@ -305,7 +306,7 @@ function CobysLinkepediaSearchWindowMixin:BuildStatusBar()
 end
 
 function CobysLinkepediaSearchWindowMixin:UpdateStatusBar()
-  local count = CobysLinkepedia.Database.GetCount and CobysLinkepedia.Database.GetCount() or 0
+  local count = BreakUpLargeNumbers(CobysLinkepedia.Database.GetCount and CobysLinkepedia.Database.GetCount() or 0)
   local query = self.currentQuery or ""
   if query ~= "" then
     local mode = Search.GetSearchMode and Search.GetSearchMode() or "exact"
@@ -343,7 +344,8 @@ do
   local f = CobySuite_CobysLinkepedia.UI.CreateWindow({
     name = "CobysLinkepediaSearchWindow",
     mixin = CobysLinkepediaSearchWindowMixin,
-    title = "Coby's Linkepedia",
+    title = Utilities.WrapColor(Utilities.Colors.TEXT_TEAL, "Coby's Linkepedia"),
+    icon = CobysLinkepedia.ICON,
     width = DEFAULT_WIDTH,
     height = DEFAULT_HEIGHT,
     resizable = { minWidth = MIN_WIDTH, minHeight = MIN_HEIGHT, maxWidth = 1600, maxHeight = 1000 },

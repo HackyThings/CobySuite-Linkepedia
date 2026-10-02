@@ -15,6 +15,24 @@
 -------------------------------------------------------------------------------
 CobysLinkepedia.Data.Changelog = {
   {
+    version = "2.0.3",
+    title = "Redesigned settings and stats",
+    date = "2026-10-01",
+    changed = {
+      "Settings: five pages with live examples, your values kept",
+      "Stats tab: status, buttons and a tile per quality and type",
+      "Scan messages: the same step names in the footer and {/lp status}",
+      "Item counts: thousands separators, like 176,228",
+      "Dialogs: sized to their text",
+    },
+    fixed = {
+      "Search results: long words and six-digit IDs show in full",
+      "{/lp status}: keeps the real highest item ID after a cancel",
+      "Variant Builder: saves the rank it built",
+      "Variants tab: the empty hint no longer runs under the search box",
+    },
+  },
+  {
     version = "2.0.2",
     title = "What's New and a quicker start",
     date = "2026-10-01",

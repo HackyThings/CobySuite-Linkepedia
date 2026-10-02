@@ -52,19 +52,3 @@ Utilities.Message = CobySuite_CobysLinkepedia.Chat.NewMessenger({
 -- level) print the same way in green and gold
 
 
----------------------------------------------------------------------------
--- Addon-specific: CobysLinkepedia tooltip content (minimap, LDB, compartment)
----------------------------------------------------------------------------
-local BRAND_TOOLTIP_OPTS = {
-  brandColor = "00CFD0",
-  title      = "Coby's Linkepedia",
-  body = function()
-    local count = CobysLinkepedia.Database.GetCount and CobysLinkepedia.Database.GetCount() or 0
-    return { "Items: " .. count }
-  end,
-  keys = {
-    { key = "Left-click",  desc = "Open search window" },
-    { key = "Right-click", desc = "Open settings"      },
-  },
-}
-Utilities.BRAND_TOOLTIP_OPTS = BRAND_TOOLTIP_OPTS

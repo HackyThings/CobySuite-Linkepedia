@@ -41,10 +41,10 @@ local MODE_NAMES = { build = "Build", expand = "Expand" }
 
 -- The scan footer's words for each phase (Search/ScanStatus.lua)
 local PHASE_NAMES = {
-  DISCOVER = "Discovering",
+  DISCOVER = "Finding items",
   SCANNING = "Scanning",
-  REFINE_WAIT = "Waiting to refine",
-  REFINING = "Refining",
+  REFINE_WAIT = "Waiting for item data",
+  REFINING = "Retrying",
   PAUSED = "Paused",
 }
 
@@ -88,7 +88,7 @@ local function IdleText(s)
   local idle = s.idle
   if not idle.running then
     if Config.Get(Config.Options.IDLE_SCAN_ENABLED) == false then
-      return Gray("Off (Settings > Scanning)")
+      return Gray("Off (Settings > Item database)")
     end
     return Gray("Stopped")
   end
@@ -148,8 +148,8 @@ local SECTIONS = {
         key = "highest", label = "Highest item ID",
         tooltip = "The highest item ID your game client knows, as of the last scan.",
         value = function(s)
-          local upper = s.last and s.last.upperBound
-          return (upper and upper > 0) and Count(upper) or Gray("--")
+          local highest = s.last and s.last.highestID
+          return (highest and highest > 0) and Count(highest) or Gray("--")
         end,
       },
       {
@@ -189,7 +189,7 @@ local SECTIONS = {
         value = function(s)
           local idle = s.idle
           return Count(idle.asked) .. " asked, " .. Count(idle.stored) .. " stored, "
-            .. Count(idle.dead) .. " not on the server"
+            .. Count(idle.dead) .. " skipped"
         end,
       },
       {
@@ -202,8 +202,8 @@ local SECTIONS = {
         end,
       },
       {
-        key = "dead", label = "Not on the server",
-        tooltip = "Item IDs your game client lists but the server does not have. They are skipped until the next game patch.",
+        key = "dead", label = "Skipped item IDs",
+        tooltip = "Item IDs your game client lists that the server refused, or never answered in two scans. They are skipped until the next game patch.",
         value = function()
           local dead = Scanner.GetDeadCount()
           if dead == 0 then return Gray("None found yet") end
@@ -222,7 +222,8 @@ for _, section in ipairs(SECTIONS) do rowTotal = rowTotal + #section.rows end
 
 local window = CobySuite_CobysLinkepedia.UI.CreateWindow({
   name = "CobysLinkepediaStatusWindow",
-  title = "Coby's Linkepedia Status",
+  title = Utilities.WrapColor(Utilities.Colors.TEXT_TEAL, "Coby's Linkepedia") .. " Status",
+  icon = CobysLinkepedia.ICON,
   width = WIDTH,
   height = TOP + #SECTIONS * SECTION_H + rowTotal * ROW_H + PAD,
   escapeCloses = true,

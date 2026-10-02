@@ -79,6 +79,7 @@ do
       size = { 100, 22 },
       fontSize = 11,
       point = { "TOPRIGHT", -4, -4 },
+      tooltip = "Remove every item from History. Favorites are kept.",
       onClick = function()
         Search.ClearHistory()
       end,

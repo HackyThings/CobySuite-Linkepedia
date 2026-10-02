@@ -46,8 +46,34 @@
 -- Nothing is created until Initialize, so building the launcher at file
 -- load is free; Initialize is expected outside combat, like any frame
 -- creation in the suite.
+--
+-- Every addon's launcher tooltip has one shape: the title with
+-- the addon's icon, a status line when the addon has one, and one line for
+-- each click. CobySuite.UI.LauncherTooltip builds it as tooltip opts:
+--
+--   tooltip = function()
+--     return CobySuite.UI.LauncherTooltip({
+--       title = "Coby's My Addon", brandColor = "00CFD0", icon = MyAddon.ICON,
+--       status = MyAddon.StatusLine(),       -- optional: a string or a list, or nil for none
+--       leftClick = "Open My Addon",         -- what a click does
+--       rightClick = "Open settings",        -- optional; with none the key reads "Click"
+--     })
+--   end,
 ---------------------------------------------------------------------------
 local UI = CobySuite_CobysLinkepedia.UI
+
+function UI.LauncherTooltip(opts)
+  local title = opts.title or ""
+  if opts.icon then title = "|T" .. tostring(opts.icon) .. ":16:16:0:0:64:64:5:59:5:59|t " .. title end
+  local status = opts.status
+  if type(status) == "string" then status = status ~= "" and { status } or nil end
+  local keys = {}
+  if opts.leftClick then
+    keys[#keys + 1] = { key = opts.rightClick and "Left-click" or "Click", desc = opts.leftClick }
+  end
+  if opts.rightClick then keys[#keys + 1] = { key = "Right-click", desc = opts.rightClick } end
+  return { brandColor = opts.brandColor, title = title, body = status, keys = keys }
+end
 
 local BUTTON_SIZE = 32
 -- The button's centre sits this far outside the minimap's edge (on the
@@ -165,11 +191,10 @@ function LauncherMixin:CreateButton()
   btn:RegisterForClicks("LeftButtonUp", "RightButtonUp")
   btn:SetScript("OnClick", function(_, button) launcher:Click(button) end)
 
-  local anchor = opts.buttonTooltipAnchor or "ANCHOR_LEFT"
-  btn:SetScript("OnEnter", function(frame)
-    UI.PopulateBrandedTooltip(GameTooltip, launcher:TooltipOpts(frame, anchor))
-  end)
-  btn:SetScript("OnLeave", function() GameTooltip:Hide() end)
+  -- a dynamic tooltip whose builder fills only the tooltip it is handed, so
+  -- the Verify tooltip grid can fill its own copy (opts.tooltip only reads)
+  UI.AddDynamicTooltip(btn, function(tip) UI.PopulateBrandedTooltip(tip, launcher:TooltipOpts()) end,
+    { anchor = opts.buttonTooltipAnchor or "ANCHOR_LEFT", fillable = true })
 
   -- Drag around the minimap; the angle is saved as it moves
   btn:RegisterForDrag("LeftButton")

@@ -47,7 +47,7 @@ local Events = CobysLinkepedia.Events
 local PAD = 10
 local ICON_SIZE = 36
 local HEADER_HEIGHT = 46
-local GAP = 8
+local GAP = Utilities.Spacing.GROUP_GAP
 local BOX_PAD = 10
 local BOX_TOP = 48              -- title and help line above a box's controls
 local FIELD_LABEL_HEIGHT = 14   -- a label above its dropdown
@@ -61,7 +61,7 @@ local TRACK_WIDTH = 124
 local RANK_WIDTH = 180
 local QUALITY_WIDTH = 120
 local QUALITY_X = SEASON_WIDTH + TRACK_WIDTH + RANK_WIDTH + 36   -- beside Rank when the row has room
-local FIELD_ROW_GAP = 8
+local FIELD_ROW_GAP = Utilities.Spacing.GROUP_GAP
 -- The crafting choices: a grid of cells, each a label over its dropdown
 -- (recipe when several make the item, quality, then one per optional slot)
 local CELL_COLUMNS = 3
@@ -241,8 +241,11 @@ local function ChoicesKey()
     return ("crafted|%s|%s|%s|%s"):format(tostring(state.itemID), tostring(state.options and state.options.recipeID),
       tostring(state.quality), table.concat(slots, ","))
   end
+  -- The rank actually built, not the choice: a default rank resolves from
+  -- the client's rank info, which can arrive mid-build (8 data entries, then
+  -- a named maximum of 6), and the key must change with it
   return ("track|%s|%s|%s|%s|%s"):format(tostring(state.itemID), tostring(state.seasonKey), tostring(state.trackName),
-    tostring(state.trackRank), tostring(state.trackQuality))
+    tostring(EffectiveRank()), tostring(state.trackQuality))
 end
 
 -- The saved record matching the current build, if any
@@ -535,7 +538,9 @@ local function RefreshHeader()
     frame.Icon:SetTexture(QUESTION_MARK)
     frame.ItemName:SetText("No item chosen")
     SetColor(frame.ItemName, Utilities.Colors.DISABLED_GRAY)
-    frame.ItemInfo:SetText("Find gear with the search box on the right, or pick it in Results and click Build Variant.")
+    -- Two lines here: nothing sits under the header until an item is chosen
+    frame.ItemInfo:SetWordWrap(true)
+    frame.ItemInfo:SetText("Find gear in the box on the right, or pick it in Results and click Build Variant.")
     return
   end
   local item = ItemRecord(state.itemID)
@@ -552,6 +557,7 @@ local function RefreshHeader()
   if #state.recipes > 0 then parts[#parts + 1] = "crafted" end
   local editing = state.savedID and Variants.Get(state.savedID)
   if editing then parts[#parts + 1] = "editing saved variant " .. editing.id end
+  frame.ItemInfo:SetWordWrap(false)
   frame.ItemInfo:SetText(table.concat(parts, "  |  "))
 end
 
@@ -584,7 +590,7 @@ local function RefreshChoices()
   local height = BOX_TOP
   if trackMode then
     frame.BoxTitle:SetText("Upgrade Track")
-    frame.BoxHelp:SetText("Any season, track and rank, and any quality above the rank's own. The game accepts any track on any gear, so whether this item drops on it is yours to check.")
+    frame.BoxHelp:SetText("Track choices do not confirm where this item drops.")
     frame.SeasonDropdown:GenerateMenu()
     frame.TrackDropdown:GenerateMenu()
     frame.RankDropdown:GenerateMenu()
@@ -691,7 +697,7 @@ local function RefreshChoices()
     elseif status.complete then
       frame.NoCraftingText:SetText("No recipe the game lists makes this item, so it takes no quality, embellishments or missives.")
     else
-      frame.NoCraftingText:SetText("Crafting choices need the recipe index, built once per game patch in under a minute.")
+      frame.NoCraftingText:SetText("Crafting choices need the recipe index. It builds by itself after a patch and pauses in combat.")
       frame.ScanButton:Show()
     end
     height = height + math.max(20, math.ceil(frame.NoCraftingText:GetStringHeight()) + 6)
@@ -712,7 +718,7 @@ local function RefreshPreview()
     if result.ilvl then parts[#parts + 1] = "Item level " .. result.ilvl end
     if result.track then parts[#parts + 1] = Variants.TrackText(result.track) end
     local bytes = #result.link
-    parts[#parts + 1] = bytes > MAX_CHAT_BYTES and Utilities.WrapColor("FF4D4D", bytes .. " bytes, too long for one chat line")
+    parts[#parts + 1] = bytes > MAX_CHAT_BYTES and Utilities.WrapColor(Utilities.Colors.WARNING_RED, bytes .. " bytes, too long for one chat line")
       or (bytes .. " bytes")
     p.Info:SetText(table.concat(parts, "  |  "))
     p.LinkBox:SetValue((result.link:gsub("|", "||")), result.link)
@@ -721,7 +727,7 @@ local function RefreshPreview()
     if state.building then
       p.Name:SetText("Building...")
     elseif state.error then
-      p.Name:SetText(Utilities.WrapColor("FF4D4D", state.error))
+      p.Name:SetText(Utilities.WrapColor(Utilities.Colors.WARNING_RED, state.error))
     else
       p.Name:SetText("Choose above to build a variant.")
     end
@@ -893,9 +899,12 @@ local function BuildHeader()
 
   frame.ItemInfo = frame:CreateFontString(nil, "OVERLAY", Utilities.Fonts.DATA)
   frame.ItemInfo:SetPoint("TOPLEFT", frame.ItemName, "BOTTOMLEFT", 0, -4)
-  frame.ItemInfo:SetPoint("RIGHT", frame, "RIGHT", -PAD, 0)
+  -- Ends at the picker, as the name does: it sits beside the picker's lower
+  -- half, so running on drew it under the box
+  frame.ItemInfo:SetPoint("RIGHT", frame.Picker, "LEFT", -16, 0)
   frame.ItemInfo:SetJustifyH("LEFT")
   frame.ItemInfo:SetWordWrap(false)
+  frame.ItemInfo:SetMaxLines(2)
   SetColor(frame.ItemInfo, Utilities.Colors.LABEL_GRAY)
 
   -- The picker's results float over everything below: a higher strata than
@@ -1211,7 +1220,7 @@ local function BuildActions()
 
   frame.UpdateButton = Utilities.CreateButton(actions, {
     text = "Update", size = { 90, 22 }, fontSize = 11,
-    point = { "LEFT", frame.SaveButton, "RIGHT", 4, 0 },
+    point = { "LEFT", frame.SaveButton, "RIGHT", Utilities.Spacing.BUTTON_GAP, 0 },
     tooltip = "Replace the saved variant you opened with these choices; macros using its token link the new one",
     onClick = function()
       if not state.savedID then return end
@@ -1262,7 +1271,7 @@ local function BuildActions()
   -- A secure apply button: the click itself changes the macro
   frame.MacroButton = Utilities.CreateButton(actions, {
     text = "Add to Macro", size = { 110, 22 }, fontSize = 11,
-    point = { "LEFT", frame.LinkButton, "RIGHT", 4, 0 },
+    point = { "LEFT", frame.LinkButton, "RIGHT", Utilities.Spacing.BUTTON_GAP, 0 },
     tooltip = "With the macro window open (/macro), add this variant's ${v=N} token at the macro's cursor (saves it). The macro window closes and reopens for a moment.",
   })
   MacroTokens.AttachSecureApply(frame.MacroButton, function()
@@ -1358,8 +1367,13 @@ local function Init()
   end)
   -- The crafting grid's columns follow the width
   frame:SetScript("OnSizeChanged", function() refreshSoon:Call() end)
-  -- Reagent names and rank item levels arrive as items load
-  frame:SetScript("OnEvent", function() refreshSoon:Call() end)
+  -- Reagent names and rank item levels arrive as items load. Rank info
+  -- arriving can move a default rank, so a result built before it is
+  -- rebuilt rather than kept beside choices that no longer made it
+  frame:SetScript("OnEvent", function()
+    if state.result and state.result.choicesKey ~= ChoicesKey() then ChoicesChanged() end
+    refreshSoon:Call()
+  end)
 
   CobysLinkepedia.EventBus:Register({ ReceiveEvent = function(_, event)
     if not frame:IsVisible() then return end

@@ -486,7 +486,7 @@ local function RefreshHint()
     panel.Hint:SetText("Shift-click an item into a chat line to get its token.")
     SetColor(panel.Hint, Utilities.Colors.LABEL_GRAY)
   else
-    panel.Hint:SetText("Item tokens are turned off in /lp settings.")
+    panel.Hint:SetText("Item tokens are turned off in /lp settings, Linking.")
     SetColor(panel.Hint, Utilities.Colors.WARNING_RED)
   end
 end
@@ -597,7 +597,7 @@ local function Build()
   ButtonFrameTemplate_HidePortrait(panel)
   panel.Inset:Hide()
   panel:SetWidth(SavedWidth())
-  panel:SetTitle("Linkepedia Item Tokens")
+  panel:SetTitle(Utilities.WrapColor(Utilities.Colors.TEXT_TEAL, "Coby's Linkepedia") .. " Item Tokens")
   panel:EnableMouse(true)
   panel:Hide()
   -- Folding, not closing: the tab brings it back
@@ -726,7 +726,7 @@ local function Build()
     size = 32,
     texture = TAB_ICON,
     texCoord = { 0.07, 0.93, 0.07, 0.93 },
-    tooltip = "Linkepedia Item Tokens",
+    tooltip = "Open Coby's Linkepedia's item token panel for this macro",
     onClick = function() SetOpen(true) end,
   })
   tab:Hide()

@@ -1945,9 +1945,9 @@ end
 -- Reset stops any scan itself, so the confirm needs no further check
 local resetPopup = CobysLinkepedia.Utilities.CreateDialogPopup({
   name = "CobysLinkepediaResetPopup",
-  title = "Reset Item Database",
+  icon = CobysLinkepedia.ICON,
+  title = "Delete the item database?",
   width = 400,
-  height = 160,
   confirmText = "Reset",
   danger = true,
   hidden = true,
@@ -1959,9 +1959,9 @@ local resetPopup = CobysLinkepedia.Utilities.CreateDialogPopup({
 
 local corruptPopup = CobysLinkepedia.Utilities.CreateDialogPopup({
   name = "CobysLinkepediaCorruptPopup",
+  icon = CobysLinkepedia.ICON,
   title = "Database Corrupted",
   width = 400,
-  height = 180,
   body = "Your item database was damaged and has been cleared.\n" ..
     "Favorites, history and settings are untouched.\n\n" ..
     "Rebuild it now?",
@@ -1978,7 +1978,7 @@ local corruptPopup = CobysLinkepedia.Utilities.CreateDialogPopup({
 
 function Database.ShowResetConfirmation()
   resetPopup:SetBody(
-    "This will delete your item database (" .. Database.GetCount() .. " items), its captured variants and the recipe index.\n" ..
+    "This will delete your item database (" .. BreakUpLargeNumbers(Database.GetCount()) .. " items), its captured variants and the recipe index.\n" ..
     "Settings, favorites, history and saved variants are kept.\n\n" ..
     "This cannot be undone."
   )

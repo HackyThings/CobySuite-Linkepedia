@@ -100,7 +100,8 @@ end
 
 -------------------------------------------------------------------------------
 -- Text changes, as pure functions of the editor's text and cursor (a cursor
--- is the number of characters before the caret)
+-- is a byte offset: the number of bytes before the caret, as FindTokens
+-- counts)
 -------------------------------------------------------------------------------
 
 -- The text with tokenText at the cursor, after a space when the cursor

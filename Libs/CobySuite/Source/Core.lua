@@ -1,6 +1,6 @@
 -- CobySuite: Shared library for all CobySuite addons
 -- All shared utilities, UI factories, and infrastructure live here.
--- Individual addons (CobySniper, CobysLinkepedia, etc.) depend on this.
+-- Individual addons (Recollect, CobysLinkepedia, etc.) depend on this.
 
 CobySuite_CobysLinkepedia = CobySuite_CobysLinkepedia or {}
 

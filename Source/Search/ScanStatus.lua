@@ -34,13 +34,14 @@ function Search.InitScanStatus(window)
   f.ProgressBg:SetHeight(14)
   f.ProgressBg:SetPoint("TOPLEFT", 8, -6)
   f.ProgressBg:SetPoint("RIGHT", -200, 0)
-  f.ProgressBg:SetColorTexture(0.1, 0.1, 0.1, 0.8)
+  f.ProgressBg:SetColorTexture(unpack(Utilities.Colors.BAR_BG))
 
   -- Progress bar fill
   f.ProgressBar = f:CreateTexture(nil, "ARTWORK")
   f.ProgressBar:SetHeight(14)
   f.ProgressBar:SetPoint("TOPLEFT", f.ProgressBg, "TOPLEFT")
-  f.ProgressBar:SetColorTexture(0, 0.81, 0.82, 0.8)
+  local teal = Utilities.Colors.BRAND_TEAL
+  f.ProgressBar:SetColorTexture(teal[1], teal[2], teal[3], 0.8)
   f.ProgressBar:SetWidth(1)
 
   -- Percentage overlay on the bar
@@ -59,18 +60,14 @@ function Search.InitScanStatus(window)
     return nil
   end
 
-  local KEY = "FFD100"
+  local KEY = Utilities.Colors.TEXT_GOLD
   local function ScanTooltip(button, header, body)
     local W = CobySuite_CobysLinkepedia.Utilities.WrapColor
     CobySuite_CobysLinkepedia.UI.AddRichTooltip(button, header, {
       body,
       " ",
-      W(KEY, "Click") .. ": Normal. Follows your Scan speed setting (50, 100 or 200 items per batch).",
-      W(KEY, "Shift+Click") .. ": Boost. 500 items per batch. Faster, with stutter while it runs.",
-      W(KEY, "Ctrl+Shift+Click") .. ": Max. 1,000 items per batch. Fastest, with heavy frame drops for the whole scan.",
-      " ",
-      { text = "Boost and Max cause significant performance problems while the scan runs. Use them when you can leave the game alone; Cancel stops the scan at any time.",
-        color = Utilities.Colors.WARNING_RED },
+      W(KEY, "Shift-click") .. ": faster.  " .. W(KEY, "Ctrl+Shift-click") .. ": fastest.",
+      { text = "Both can stutter; Cancel stops a scan.", color = Utilities.Colors.WARNING_RED },
     })
   end
 
@@ -79,18 +76,18 @@ function Search.InitScanStatus(window)
     point = { "TOPRIGHT", f, "TOPRIGHT", -6, -3 },
     onClick = function() Scanner.StartBuild(nil, IntensityFromModifiers()) end,
   })
-  ScanTooltip(buildBtn, "Build", "Wipes the database and re-scans every item ID from scratch. Use Expand to fill gaps instead.")
+  ScanTooltip(buildBtn, "Build", "Rebuild from scratch; asks first if items are stored.")
 
   local expandBtn = Utilities.CreateButton(f, {
     text = "Expand", size = { 55, 20 }, fontSize = 11,
-    point = { "RIGHT", buildBtn, "LEFT", -4, 0 },
+    point = { "RIGHT", buildBtn, "LEFT", -Utilities.Spacing.BUTTON_GAP, 0 },
     onClick = function() Scanner.StartExpand(IntensityFromModifiers()) end,
   })
-  ScanTooltip(expandBtn, "Expand", "Scans only item IDs not yet in the database; everything already stored is kept.")
+  ScanTooltip(expandBtn, "Expand", "Add missing items and keep your database.")
 
   local cancelBtn = Utilities.CreateButton(f, {
     text = "Cancel", size = { 55, 20 }, fontSize = 11,
-    point = { "RIGHT", expandBtn, "LEFT", -4, 0 },
+    point = { "RIGHT", expandBtn, "LEFT", -Utilities.Spacing.BUTTON_GAP, 0 },
     onClick = function() Scanner.Cancel() end,
     tooltip = "Stop the current scan. Items found so far are kept; Expand continues it later.",
   })
@@ -108,7 +105,7 @@ function Search.InitScanStatus(window)
     labelSide  = "left",
     labelGap   = 2,
     labelColor = Utilities.Colors.LABEL_GRAY,
-    tooltip    = "Enable slow background scanning of pending items while idle",
+    tooltip    = "While you play, quietly ask again for items a scan could not get. Never in combat or during a scan. The same switch as the idle scan in the settings.",
     initialValue = Config.Get(Config.Options.IDLE_SCAN_ENABLED) ~= false,
     -- Only writes the option; the scanner starts or stops its ticker from
     -- the ConfigChanged it fires (Scanner.ReconcileIdle)
@@ -161,15 +158,15 @@ function Search.InitScanStatus(window)
       -- Build detail line
       local parts = {}
       if status.state == "PAUSED" then
-        table.insert(parts, Utilities.WrapColor("FFD100", "Paused"))
+        table.insert(parts, Utilities.WrapColor(Utilities.Colors.TEXT_GOLD, "Paused"))
       elseif status.state == "DISCOVER" then
-        table.insert(parts, Utilities.WrapColor("00CCFF", "Discovering"))
+        table.insert(parts, Utilities.WrapColor("00CCFF", "Finding items"))
       elseif status.state == "SCANNING" then
-        table.insert(parts, Utilities.WrapColor("00FF00", "Scanning"))
+        table.insert(parts, Utilities.WrapColor(Utilities.Colors.TEXT_GREEN, "Scanning"))
       elseif status.state == "REFINE_WAIT" then
-        table.insert(parts, Utilities.WrapColor("FFD100", "Waiting to refine"))
+        table.insert(parts, Utilities.WrapColor(Utilities.Colors.TEXT_GOLD, "Waiting for item data"))
       elseif status.state == "REFINING" then
-        table.insert(parts, Utilities.WrapColor("FF8800", "Refining"))
+        table.insert(parts, Utilities.WrapColor(Utilities.Colors.TEXT_ORANGE, "Retrying"))
       else
         local mode = status.scanMode or "Scanning"
         table.insert(parts, mode:sub(1,1):upper() .. mode:sub(2))
@@ -195,13 +192,13 @@ function Search.InitScanStatus(window)
         lastItem = "Last: " .. status.lastFoundName .. "  (ID: " .. status.lastFoundID .. ")"
       end
       if status.state == "DISCOVER" then
-        f.ItemText:SetText(lastItem ~= "" and lastItem or "Scanning item IDs for validity...")
+        f.ItemText:SetText(lastItem ~= "" and lastItem or "Looking for new items...")
         f.ItemText:SetTextColor(0.5, 0.7, 0.8)
       elseif status.state == "REFINE_WAIT" then
-        f.ItemText:SetText(lastItem ~= "" and (lastItem .. "  |  Waiting for stragglers...") or "Waiting 5s for server stragglers...")
+        f.ItemText:SetText(lastItem ~= "" and (lastItem .. "  |  Waiting for the server...") or "Waiting for the server...")
         f.ItemText:SetTextColor(0.7, 0.7, 0.5)
       elseif status.state == "REFINING" then
-        f.ItemText:SetText(lastItem ~= "" and (lastItem .. "  |  Refining...") or "Re-querying missed items...")
+        f.ItemText:SetText(lastItem ~= "" and (lastItem .. "  |  Retrying...") or "Retrying items that did not load...")
         f.ItemText:SetTextColor(0.7, 0.5, 0.3)
       else
         f.ItemText:SetText(lastItem)

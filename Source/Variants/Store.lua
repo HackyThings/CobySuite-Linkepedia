@@ -274,6 +274,18 @@ function Variants.PeekNextID()
   return saved and saved.nextID or 1
 end
 
+-- The lowest number a saved variant has now, or nil with none saved.
+-- Numbers are never reused, so it can be far above 1.
+function Variants.LowestID()
+  local saved = Live()
+  if not saved then return nil end
+  local lowest
+  for id in pairs(saved.byID) do
+    if not lowest or id < lowest then lowest = id end
+  end
+  return lowest
+end
+
 -- Higher rank first, then higher item level, then the older record
 local function Before(a, b)
   if (a.rank or 0) ~= (b.rank or 0) then return (a.rank or 0) > (b.rank or 0) end

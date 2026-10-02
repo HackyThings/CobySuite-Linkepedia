@@ -200,15 +200,21 @@ end
 -------------------------------------------------------------------------------
 -- Column definitions
 -------------------------------------------------------------------------------
+-- 653px in all: what the header has at the window's smallest width (1005),
+-- less the spacer's minimum, so fitToWidth never shrinks them. Type, Subtype,
+-- Expac, Quality and ID hold words or numbers that can't wrap
+-- ("Miscellaneous", "Blacksmithing", "Dragonflight", "Legendary", a 6-digit
+-- ID); each has a width that showed them whole in game (Verify runs of
+-- 2026-10-01). Names wrap instead.
 local COLUMNS = {
-  { key = "name",      label = "Item Name",  width = 200, sortable = true, justify = "LEFT",   tooltip = "Item name, colored by quality" },
-  { key = "itemLevel", label = "iLvl",       width = 45,  sortable = true, justify = "CENTER", tooltip = "Item level" },
+  { key = "name",      label = "Item Name",  width = 182, sortable = true, justify = "LEFT",   tooltip = "Item name, colored by quality" },
+  { key = "itemLevel", label = "iLvl",       width = 38,  sortable = true, justify = "CENTER", tooltip = "Item level" },
   { key = "type",      label = "Type",       width = 90,  sortable = true, justify = "LEFT",   tooltip = "Item class (Weapon, Armor, etc.)" },
-  { key = "subType",   label = "Subtype",    width = 90,  sortable = true, justify = "LEFT",   tooltip = "Item subclass (Cloth, Dagger, etc.)" },
-  { key = "expansion", label = "Expac",      width = 70,  sortable = true, justify = "CENTER", tooltip = "Expansion the item belongs to" },
-  { key = "quality",   label = "Quality",    width = 65,  sortable = true, justify = "CENTER", tooltip = "Item quality (Poor through Legendary)" },
-  { key = "itemID",    label = "ID",         width = 55,  sortable = true, justify = "RIGHT",  tooltip = "Numeric item ID" },
-  { key = "reqLevel",  label = "Req",        width = 40,  sortable = true, justify = "CENTER", tooltip = "Required player level" },
+  { key = "subType",   label = "Subtype",    width = 92,  sortable = true, justify = "LEFT",   tooltip = "Item subclass (Cloth, Dagger, etc.)" },
+  { key = "expansion", label = "Expac",      width = 84,  sortable = true, justify = "CENTER", tooltip = "Expansion the item belongs to" },
+  { key = "quality",   label = "Quality",    width = 74,  sortable = true, justify = "CENTER", tooltip = "Item quality, such as Common, Rare or Epic" },
+  { key = "itemID",    label = "ID",         width = 56,  sortable = true, justify = "RIGHT",  tooltip = "Numeric item ID" },
+  { key = "reqLevel",  label = "Req",        width = 37,  sortable = true, justify = "CENTER", tooltip = "Required player level" },
   -- Trailing spacer that absorbs leftover width, matching CobySniper's tables.
   -- Stretching a real data column instead cost it its divider and its resize
   -- handle, and inverted it whenever the window was narrower than the columns.
@@ -346,7 +352,7 @@ local function PopulateRow(row, data, columns)
       if qc then
         cell.text:SetTextColor(qc.r, qc.g, qc.b)
       else
-        cell.text:SetTextColor(1, 1, 1)
+        cell.text:SetTextColor(unpack(Utilities.Colors.HIGHLIGHT_WHITE))
       end
       cell.text:Show()
 
@@ -609,7 +615,9 @@ local function UpdateEmptyState()
   if Database.GetCount() == 0 then
     emptyLabel:SetText(
       "Your item database is empty.\n" ..
-      "Press |cFF00CED1Build|r below, or use |cFF00CED1/lp build|r, to scan the item cache."
+      "Press " .. Utilities.WrapColor(Utilities.Colors.TEXT_TEAL, "Build")
+        .. " below, or use " .. Utilities.WrapColor(Utilities.Colors.TEXT_TEAL, "/lp build")
+        .. ", to scan the item cache."
     )
   else
     emptyLabel:SetText("No items match your search.")

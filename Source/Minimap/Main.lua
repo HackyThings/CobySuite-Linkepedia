@@ -13,8 +13,15 @@ local launcher = CobySuite_CobysLinkepedia.UI.CreateLauncher({
   label         = "Coby's Linkepedia",
   icon          = CobysLinkepedia.ICON,
   buttonName    = "CobysLinkepediaMinimapButton",
-  -- Utilities.BRAND_TOOLTIP_OPTS: the branded title, item count and click hints
-  tooltip       = function() return Utilities.BRAND_TOOLTIP_OPTS end,
+  -- The suite's launcher tooltip: the title, the item count, the two clicks
+  tooltip       = function()
+    local count = CobysLinkepedia.Database.GetCount and CobysLinkepedia.Database.GetCount() or 0
+    return CobySuite_CobysLinkepedia.UI.LauncherTooltip({
+      title = "Coby's Linkepedia", brandColor = Utilities.Colors.TEXT_TEAL, icon = CobysLinkepedia.ICON,
+      status = "Items: " .. BreakUpLargeNumbers(count),
+      leftClick = "Open search window", rightClick = "Open settings",
+    })
+  end,
   onLeftClick   = function() Search.ToggleWindow() end,
   onRightClick  = function() Config.ToggleSettings() end,
   persist       = {

@@ -213,7 +213,7 @@ function Scanner.RecipeScanCommand(arg)
     return
   end
   Scanner.StartRecipeScan(true)
-  Utilities.Message("Recipe scan started. It takes under a minute and pauses in combat; /lp recipes cancel stops it.")
+  Utilities.Message("Recipe scan started. It pauses in combat; /lp recipes cancel stops it.")
 end
 
 -- A recipe scan finishing tells the player once, quietly

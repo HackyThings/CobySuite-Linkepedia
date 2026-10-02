@@ -1,14 +1,12 @@
--- Stats: database statistics tab (quality distribution, item classes, totals)
+-- Stats: database statistics tab (the database's status, quality and item
+-- type counts)
 --
--- Two columns in a scroll frame: quality bars with the summary under them on
--- the left, item classes on the right; every block hangs from the one above
--- it, so a long class list pushes nothing into anything else. The tab
--- refreshes when it opens and, while it stays open, when the item or variant
--- database has changed: every half second it compares the two generation
--- counters and refreshes only if one moved, at most every five seconds while
--- a scan is writing. The item counts walk every record, so they are kept
--- until the item generation moves; a variant-only change reads the running
--- variant total and recounts nothing.
+-- The tab refreshes when it opens and, while it stays open, when the item or
+-- variant database has changed: every half second it compares the two
+-- generation counters and refreshes only if one moved, at most every five
+-- seconds while a scan is writing. The item counts walk every record, so they
+-- are kept until the item generation moves; a variant-only change reads the
+-- running variant total and recounts nothing.
 
 local Search = CobysLinkepedia.Search
 local Database = CobysLinkepedia.Database
@@ -16,10 +14,7 @@ local Utilities = CobysLinkepedia.Utilities
 local Debug = CobysLinkepedia.Debug
 
 local QUALITY_MAX = 8        -- Enum.ItemQuality: Poor (0) through WoW Token (8)
-local BAR_ROW_H = 18
-local LEFT_W = 300
-local RIGHT_W = 260
-local COLUMN_GAP = 24
+local TYPE_TILES = 32        -- more than the item classes the game has
 local CHECK_INTERVAL = 0.5
 local SCAN_REFRESH_INTERVAL = 5
 
@@ -44,7 +39,6 @@ function Search.ComputeStats()
     qualityCounts = items.qualityCounts,
     typeCounts = items.typeCounts,
     variantCount = Database.GetVariantTotal(),
-    bucketCount = items.bucketCount,
     scanCoverage = 0,
   }
 
@@ -70,7 +64,86 @@ end
 -------------------------------------------------------------------------------
 -- Stats tab content
 -------------------------------------------------------------------------------
+-- The shared kit's pieces, top to bottom in a scroll frame: the database's
+-- status card (the settings window's Item database card, with its Build or
+-- Expand button), then a tile per quality and a tile per item type, each
+-- with its count and its share of the database. The card and the grids set
+-- their own heights; the scroll child follows them.
 do
+  local Examples = CobysLinkepedia.Config.Examples
+  local CONTENT_PAD = 12
+  local SECTION_GAP = 14
+
+  -- The stats the tiles read, kept from the last refresh
+  local current
+
+  local function Share(count)
+    local total = current and current.totalItems or 0
+    return total > 0 and count / total or 0
+  end
+
+  local function Percent(count)
+    local share = Share(count) * 100
+    if share > 0 and share < 1 then return "under 1%" end
+    return ("%d%%"):format(math.floor(share + 0.5))
+  end
+
+  local function QualityTiles()
+    local tiles = {}
+    for q = 0, QUALITY_MAX do
+      local count = current and current.qualityCounts[q] or 0
+      local name = Utilities.QualityNames[q] or ("Quality " .. q)
+      -- the tiles take { r, g, b }; the game's quality colors are r/g/b fields
+      local qc = ITEM_QUALITY_COLORS[q]
+      local color = qc and { qc.r, qc.g, qc.b } or nil
+      tiles[#tiles + 1] = {
+        key = "quality" .. q,
+        value = BreakUpLargeNumbers(count),
+        label = name,
+        color = color,
+        bar = Share(count),
+        barColor = color,
+        dim = count == 0,
+        tooltip = count > 0 and ("%s of your items are %s."):format(Percent(count), name)
+          or ("No %s items in your database."):format(name),
+      }
+    end
+    return tiles
+  end
+
+  local function TypeTiles()
+    local sorted = {}
+    for classID, count in pairs(current and current.typeCounts or {}) do
+      sorted[#sorted + 1] = { id = classID, count = count }
+    end
+    table.sort(sorted, function(a, b)
+      if a.count ~= b.count then return a.count > b.count end
+      return a.id < b.id
+    end)
+    local tiles = {}
+    for i, entry in ipairs(sorted) do
+      local name = Utilities.GetClassName(entry.id)
+      tiles[i] = {
+        key = "type" .. entry.id,
+        value = BreakUpLargeNumbers(entry.count),
+        label = name,
+        bar = Share(entry.count),
+        tooltip = ("%s: %s of your items."):format(name, Percent(entry.count)),
+      }
+    end
+    return tiles
+  end
+
+  -- The card's line, then how many variants the addon has captured
+  local function CardDescription()
+    local text = select(4, Examples.DatabaseState())
+    local variants = current and current.variantCount or 0
+    if variants > 0 then
+      text = text .. "\n" .. ("%s captured variants: crafted ranks, upgrade levels and other versions."):format(BreakUpLargeNumbers(variants))
+    end
+    return text
+  end
+
   local function InitStatsTab()
     if Search._statsFrame then return end
     local window = CobysLinkepediaSearchWindow
@@ -85,115 +158,75 @@ do
     scroll:SetPoint("TOPLEFT", 0, 0)
     scroll:SetPoint("BOTTOMRIGHT", -26, 0)
     local content = CreateFrame("Frame", nil, scroll)
-    content:SetSize(LEFT_W + COLUMN_GAP + RIGHT_W + 24, 1)
+    content:SetSize(math.max(scroll:GetWidth(), 1), 1)
     scroll:SetScrollChild(content)
 
-    local title = content:CreateFontString(nil, "OVERLAY", Utilities.Fonts.TITLE)
-    title:SetPoint("TOPLEFT", 12, -8)
-    title:SetText("Database Statistics")
+    local Layout   -- assigned below; every piece calls it when its height changes
 
-    -- Left column: quality bars, summary below them
-    local qualLabel = content:CreateFontString(nil, "OVERLAY", Utilities.Fonts.BODY)
-    qualLabel:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -12)
-    qualLabel:SetText("Items by Quality")
+    f.Card = CobySuite_CobysLinkepedia.UI.CreateStatusCard(content, {
+      icon = CobysLinkepedia.ICON,
+      state = function() return (Examples.DatabaseState()) end,
+      stateText = function() return (select(2, Examples.DatabaseState())) end,
+      title = function() return (select(3, Examples.DatabaseState())) end,
+      description = CardDescription,
+      actions = Examples.DatabaseActions(),
+      ticker = 0.5,
+      onHeight = function() if Layout then Layout() end end,
+    })
+    f.Card:SetPoint("TOPLEFT", content, "TOPLEFT", CONTENT_PAD, -CONTENT_PAD)
+    f.Card:SetPoint("TOPRIGHT", content, "TOPRIGHT", -CONTENT_PAD, -CONTENT_PAD)
 
-    f.QualityBars = CreateFrame("Frame", nil, content)
-    f.QualityBars:SetPoint("TOPLEFT", qualLabel, "BOTTOMLEFT", 0, -6)
-    f.QualityBars:SetSize(LEFT_W, (QUALITY_MAX + 1) * BAR_ROW_H)
-
-    f.SummaryText = content:CreateFontString(nil, "OVERLAY", Utilities.Fonts.DATA)
-    f.SummaryText:SetPoint("TOPLEFT", f.QualityBars, "BOTTOMLEFT", 0, -12)
-    f.SummaryText:SetWidth(LEFT_W)
-    f.SummaryText:SetJustifyH("LEFT")
-    f.SummaryText:SetWordWrap(true)
-
-    -- Right column: item classes
-    local typeLabel = content:CreateFontString(nil, "OVERLAY", Utilities.Fonts.BODY)
-    typeLabel:SetPoint("TOPLEFT", qualLabel, "TOPLEFT", LEFT_W + COLUMN_GAP, 0)
-    typeLabel:SetText("Items by Type")
-
-    f.TypeText = content:CreateFontString(nil, "OVERLAY", Utilities.Fonts.DATA)
-    f.TypeText:SetPoint("TOPLEFT", typeLabel, "BOTTOMLEFT", 0, -6)
-    f.TypeText:SetWidth(RIGHT_W)
-    f.TypeText:SetJustifyH("LEFT")
-    f.TypeText:SetWordWrap(true)
-
-    -- One row per quality, built once and reused
-    f._qualityRows = {}
-    for q = 0, QUALITY_MAX do
-      local barY = -q * BAR_ROW_H
-      local row = {}
-      row.label = f.QualityBars:CreateFontString(nil, "OVERLAY", Utilities.Fonts.DATA)
-      row.label:SetPoint("TOPLEFT", 0, barY)
-      row.countText = f.QualityBars:CreateFontString(nil, "OVERLAY", Utilities.Fonts.DATA)
-      row.countText:SetPoint("TOPRIGHT", f.QualityBars, "TOPRIGHT", 0, barY)
-      row.bar = f.QualityBars:CreateTexture(nil, "ARTWORK")
-      row.bar:SetPoint("TOPLEFT", 80, barY - 1)
-      f._qualityRows[q] = row
+    -- A section header with its divider under it, both following the width
+    local function Header(text, below)
+      local header, divider = CobySuite_CobysLinkepedia.UI.CreateSection(content, {
+        text = text, font = Utilities.Fonts.HEADING, width = 1,
+        point = { "TOPLEFT", below, "BOTTOMLEFT", 0, -SECTION_GAP },
+      })
+      return header, divider
     end
+
+    f.QualityHeader, f.QualityDivider = Header("Items by quality", f.Card)
+    f.Qualities = CobySuite_CobysLinkepedia.UI.CreateStatTiles(content, {
+      tiles = QualityTiles, maxTiles = QUALITY_MAX + 1, columns = 3, minTileWidth = 140,
+      onHeight = function() if Layout then Layout() end end,
+    })
+    f.Qualities:SetPoint("TOPLEFT", f.QualityDivider, "BOTTOMLEFT", 0, -8)
+    f.Qualities:SetPoint("RIGHT", content, "RIGHT", -CONTENT_PAD, 0)
+
+    f.TypeHeader, f.TypeDivider = Header("Items by type", f.Qualities)
+    f.Types = CobySuite_CobysLinkepedia.UI.CreateStatTiles(content, {
+      tiles = TypeTiles, maxTiles = TYPE_TILES, columns = 4, minTileWidth = 120, height = 44,
+      onHeight = function() if Layout then Layout() end end,
+    })
+    f.Types:SetPoint("TOPLEFT", f.TypeDivider, "BOTTOMLEFT", 0, -8)
+    f.Types:SetPoint("RIGHT", content, "RIGHT", -CONTENT_PAD, 0)
+
+    -- The scroll child is as wide as the view and as tall as its pieces
+    function Layout()
+      local width = content:GetWidth() - 2 * CONTENT_PAD
+      f.QualityDivider:SetWidth(math.max(width, 1))
+      f.TypeDivider:SetWidth(math.max(width, 1))
+      local height = CONTENT_PAD + f.Card:GetHeight()
+        + 2 * (SECTION_GAP + f.QualityHeader:GetStringHeight() + 2 + 1 + 8)
+        + f.Qualities:GetHeight() + f.Types:GetHeight() + CONTENT_PAD
+      content:SetHeight(math.max(height, 1))
+    end
+    scroll:SetScript("OnSizeChanged", function(_, width)
+      content:SetWidth(math.max(width, 1))
+      Layout()
+    end)
 
     local seenItems, seenVariants
     local sinceCheck, sinceRefresh = 0, 0
 
     function f:Refresh()
-      local stats = Search.ComputeStats()
-
-      local maxCount = 1
-      for _, count in pairs(stats.qualityCounts) do
-        if count > maxCount then maxCount = count end
-      end
-      for q = 0, QUALITY_MAX do
-        local row = f._qualityRows[q]
-        local count = stats.qualityCounts[q] or 0
-        local qc = ITEM_QUALITY_COLORS[q]
-        local r, g, b = 1, 1, 1
-        if qc then r, g, b = qc.r, qc.g, qc.b end
-        row.label:SetText(Utilities.QualityNames[q] or ("Quality " .. q))
-        row.label:SetTextColor(r, g, b)
-        row.countText:SetText(tostring(count))
-        local barWidth = count / maxCount * 150
-        if count > 0 then
-          row.bar:SetSize(math.max(barWidth, 2), 10)
-          row.bar:SetColorTexture(r, g, b, 0.6)
-          row.bar:Show()
-        else
-          row.bar:Hide()
-        end
-      end
-
-      local sortedTypes = {}
-      for classID, count in pairs(stats.typeCounts) do
-        sortedTypes[#sortedTypes + 1] = { id = classID, count = count }
-      end
-      table.sort(sortedTypes, function(a, b)
-        if a.count ~= b.count then return a.count > b.count end
-        return a.id < b.id
-      end)
-      local typeLines = {}
-      for i, entry in ipairs(sortedTypes) do
-        typeLines[i] = Utilities.GetClassName(entry.id) .. ": " .. entry.count
-      end
-      f.TypeText:SetText(#typeLines > 0 and table.concat(typeLines, "\n") or "No items yet")
-
-      local summaryLines = {
-        "Total items: " .. stats.totalItems,
-        "Prefix buckets: " .. stats.bucketCount,
-        "Captured variants: " .. stats.variantCount,
-        (stats.scanComplete == nil and "Scan: not run yet")
-          or (stats.scanComplete and "Scan: complete (100%)")
-          or ("Scan: unfinished (" .. math.floor(stats.scanCoverage * 100) .. "%, /lp expand continues it)"),
-      }
-      if COBYS_LINKEPEDIA_DB and COBYS_LINKEPEDIA_DB.scanState and COBYS_LINKEPEDIA_DB.scanState.lastScanDate then
-        summaryLines[#summaryLines + 1] = "Last scan: " .. date("%Y-%m-%d %H:%M", COBYS_LINKEPEDIA_DB.scanState.lastScanDate)
-      end
-      f.SummaryText:SetText(table.concat(summaryLines, "\n"))
-
-      -- The scroll child is as tall as the taller column
-      local top = 8 + title:GetStringHeight() + 12
-      local left = top + qualLabel:GetStringHeight() + 6 + f.QualityBars:GetHeight() + 12 + f.SummaryText:GetStringHeight()
-      local right = top + typeLabel:GetStringHeight() + 6 + f.TypeText:GetStringHeight()
-      content:SetHeight(math.max(left, right) + 12)
-
+      local width = scroll:GetWidth()
+      if width and width > 1 then content:SetWidth(width) end
+      current = Search.ComputeStats()
+      f.Card:Refresh()
+      f.Qualities:Refresh()
+      f.Types:Refresh()
+      Layout()
       seenItems, seenVariants = Database.GetGeneration(), Database.GetVariantGeneration()
       sinceRefresh = 0
     end

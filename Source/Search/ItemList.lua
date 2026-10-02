@@ -83,7 +83,7 @@ local function InitRow(row, entry, list)
     row.Text:SetText(text)
     -- The variant's own quality: a track rank or crafted quality can change it
     local qc = ITEM_QUALITY_COLORS[Search.VariantQuality(variant, entry.id)]
-    if qc then row.Text:SetTextColor(qc.r, qc.g, qc.b) else row.Text:SetTextColor(1, 1, 1) end
+    if qc then row.Text:SetTextColor(qc.r, qc.g, qc.b) else row.Text:SetTextColor(unpack(Utilities.Colors.HIGHLIGHT_WHITE)) end
 
     local right = {}
     if variant.savedID and variant.favorite then right[#right + 1] = CreateAtlasMarkup("auctionhouse-icon-favorite", 12, 12) end
@@ -99,7 +99,7 @@ local function InitRow(row, entry, list)
     if qc then
       row.Text:SetTextColor(qc.r, qc.g, qc.b)
     else
-      row.Text:SetTextColor(1, 1, 1)
+      row.Text:SetTextColor(unpack(Utilities.Colors.HIGHLIGHT_WHITE))
     end
   else
     row.Text:SetTextColor(unpack(Utilities.Colors.DISABLED_GRAY))
