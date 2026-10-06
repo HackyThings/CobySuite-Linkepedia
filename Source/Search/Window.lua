@@ -6,9 +6,7 @@ local Debug = CobysLinkepedia.Debug
 
 -- The results table is 653px of columns plus the spacer's 25px minimum, and
 -- the detail pane side costs another 324px at the pane's default width (the
--- pane plus its margins), so the 1005 minimum fits them unshrunk. The old 800
--- default was 86px too narrow for its own column defaults, which is why ID
--- and Req drew over the scrollbar.
+-- pane plus its margins), so the 1005 minimum fits them unshrunk.
 local DETAIL_LEFT_MARGIN = 8     -- the window's edge to the content
 local DETAIL_GAP = 20            -- the content's right edge to the pane
 local DETAIL_RIGHT_MARGIN = 8    -- the pane to the window's edge
@@ -118,10 +116,7 @@ end
 function CobysLinkepediaSearchWindowMixin:BuildSearchBox()
   -- Blizzard's SearchBoxTemplate through the shared factory, the same box Coby's
   -- Currency Searcher uses: magnifier, placeholder, built-in clear button,
-  -- debounce, and Escape-clears all come with it. The
-  -- hand-rolled InputBoxTemplate this replaces needed a separate "Search:"
-  -- label, its own clear button and its own debounce, and looked nothing like
-  -- the other addons.
+  -- debounce, and Escape-clears all come with it.
   local searchBox = CobySuite_CobysLinkepedia.UI.CreateSearchBox(self, {
     maxLetters  = 100,
     debounce    = 0.5,
@@ -171,6 +166,81 @@ Search.ItemTooltipOptions = {
   end,
   cleanShopping = true,
 }
+
+-- Suggestion lists (autocomplete, Quick Search, the settings example) can
+-- show two items of one name: each such row gets a grey hint after the name,
+-- item level and subtype, or the item ID when those match too.
+-- DuplicateHints(items) -> { [index] = hint } for the rows that need one.
+local function Describe(item)
+  local parts = {}
+  if (item.itemLevel or 0) > 1 then parts[#parts + 1] = "iLvl " .. item.itemLevel end
+  local classID = item._classID
+  if classID and classID >= 0 then
+    local sub = Utilities.GetSubClassName(classID, item._subClassID)
+    local kind = (sub and sub ~= "") and sub or Utilities.GetClassName(classID)
+    if kind and kind ~= "" then parts[#parts + 1] = kind end
+  end
+  return table.concat(parts, ", ")
+end
+
+function Search.DuplicateHints(items)
+  local byName, hints = {}, {}
+  for i, item in ipairs(items) do
+    local name = item.name or ""
+    byName[name] = byName[name] or {}
+    table.insert(byName[name], i)
+  end
+  for _, indexes in pairs(byName) do
+    if #indexes > 1 then
+      local seen, clash = {}, false
+      for _, i in ipairs(indexes) do
+        local hint = Describe(items[i])
+        if hint == "" or seen[hint] then clash = true end
+        seen[hint], hints[i] = true, hint
+      end
+      if clash then
+        for _, i in ipairs(indexes) do hints[i] = "ID " .. items[i].itemID end
+      end
+    end
+  end
+  return hints
+end
+
+-- The name with its hint in grey after it (the name alone without one)
+function Search.NameWithHint(name, hint)
+  if not hint or hint == "" then return name or "" end
+  local c = Utilities.Colors.LABEL_GRAY
+  return (name or "") .. ("  |cff%02x%02x%02x%s|r"):format(c[1] * 255, c[2] * 255, c[3] * 255, hint)
+end
+
+-- The item the detail pane shows is marked in every list that holds it, as
+-- the shared sort table marks its selected row. Each list registers a
+-- repaint of its visible rows (WatchSelection); the detail pane calls
+-- SelectionChanged whenever it shows another item or none.
+local selectionWatchers = {}
+
+function Search.WatchSelection(repaint)
+  selectionWatchers[#selectionWatchers + 1] = repaint
+end
+
+function Search.SelectionChanged()
+  for _, repaint in ipairs(selectionWatchers) do repaint() end
+end
+
+function Search.IsSelected(itemID)
+  local item = Search.GetDetailItem and Search.GetDetailItem()
+  return item ~= nil and itemID ~= nil and item.itemID == itemID
+end
+
+-- A row's selected wash, under its text and over its alternating shade
+function Search.AddSelectedMark(row)
+  local mark = row:CreateTexture(nil, "BACKGROUND", nil, 1)
+  mark:SetAllPoints()
+  local gold = Utilities.Colors.STATUS_GOLD
+  mark:SetColorTexture(gold[1], gold[2], gold[3], 0.15)
+  mark:Hide()
+  return mark
+end
 
 -- One set of row actions for Results, Favorites and History: click shows the
 -- item in the detail pane, Ctrl-click opens the dressing room, Shift-click
@@ -232,7 +302,7 @@ function CobysLinkepediaSearchWindowMixin:BuildTabs()
     "Build crafted and upgrade-track versions of gear, and save them",
     "Items and variants you've marked as favorites",
     "Recently linked items",
-    "Database statistics and scan history",
+    "Your database at a glance: its state, last scan and item counts",
   }
 
   for i, name in ipairs(tabNames) do
@@ -277,7 +347,6 @@ function CobysLinkepediaSearchWindowMixin:SetTab(tabName)
   local tabIndex = TAB_INDEX[tabName] or 1
   PanelTemplates_SetTab(self, tabIndex)
 
-  -- Show/hide content areas
   if Search.SetActiveTab then
     Search.SetActiveTab(tabName)
   end
@@ -290,9 +359,16 @@ function CobysLinkepediaSearchWindowMixin:BuildStatusBar()
   self.StatusText = self:CreateFontString(nil, "OVERLAY", Utilities.Fonts.DATA)
   self.StatusText:SetPoint("BOTTOMLEFT", 12, 14)
   self.StatusText:SetJustifyH("LEFT")
+  self.StatusText:SetWordWrap(false)
+  -- Ends short of the resize grip, so a long query never runs under it
+  self.StatusText:SetPoint("BOTTOMRIGHT", -28, 14)
   self:UpdateStatusBar()
 
-  -- Debug button (bottom-right)
+  -- Debug button (bottom-right), in development builds only; players reach
+  -- the log with /lp debug. The window's OnLoad runs a frame after load,
+  -- once the test files have loaded.
+  if not CobysLinkepedia.IsDevelopmentBuild() then return end
+  self.StatusText:SetPoint("BOTTOMRIGHT", -76, 14)
   CobySuite_CobysLinkepedia.UI.CreateButton(self, {
     size = { 60, 18 }, text = "Debug", fontSize = 11,
     point = { "BOTTOMRIGHT", -8, 10 },
@@ -306,14 +382,23 @@ function CobysLinkepediaSearchWindowMixin:BuildStatusBar()
 end
 
 function CobysLinkepediaSearchWindowMixin:UpdateStatusBar()
-  local count = BreakUpLargeNumbers(CobysLinkepedia.Database.GetCount and CobysLinkepedia.Database.GetCount() or 0)
+  local total = CobysLinkepedia.Database.GetCount and CobysLinkepedia.Database.GetCount() or 0
+  local count = BreakUpLargeNumbers(total)
   local query = self.currentQuery or ""
+  -- Matches first, while a finished list is on show (a list still building
+  -- has no count yet) and holds less than the whole database; the
+  -- database's size after it
+  local matches = Search.GetResultSummary and Search.GetResultSummary()
+  local lead = ""
+  if matches and (self.activeTab or "results") == "results" and not (query == "" and matches == total) then
+    lead = (matches == 1 and "1 result" or (BreakUpLargeNumbers(matches) .. " results")) .. " | "
+  end
   if query ~= "" then
     local mode = Search.GetSearchMode and Search.GetSearchMode() or "exact"
     local how = mode == "all" and " (all words)" or mode == "any" and " (any word)" or ""
-    self.StatusText:SetText("Database: " .. count .. " items | Search" .. how .. ": \"" .. query .. "\"")
+    self.StatusText:SetText(lead .. "Search" .. how .. ": \"" .. query .. "\" | Database: " .. count .. " items")
   else
-    self.StatusText:SetText("Database: " .. count .. " items")
+    self.StatusText:SetText(lead .. "Database: " .. count .. " items")
   end
 end
 

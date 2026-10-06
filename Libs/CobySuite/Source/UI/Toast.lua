@@ -11,11 +11,18 @@
 --     fadeInDuration  = 0.3,
 --     fadeOutDuration = 0.5,
 --     defaultAccentColor = { r, g, b },
---     utilities     = addonUtilities,  -- for Colors/Fonts/Backdrops
---     position      = function(toast, index, height, gap) ... end,
+--     utilities     = addonUtilities,  -- for Colors/Fonts
+--     position      = function(toast, index, height, gap, offset) ... end,
 --     isAvailable   = function() return true end,
 --     isEnabled     = function() return true end,
 --     chatFallback  = function(title, message) end,
+--   })
+--   toast.Show({
+--     title, message, icon, color, duration,
+--     onClick   = function() end,  -- a click on the toast (ignored with buttons)
+--     buttons   = { { text, onClick, width, side = "right" }, ... },
+--     countdown = true,            -- a bar draining over the time left
+--     onExpire  = function() end,  -- only when it times out
 --   })
 --
 -- Returns: { Show(opts), DismissAll(), Suspend(), Resume(), GetCounts(), Visible() }
@@ -23,14 +30,47 @@
 -- or goes to chat); Visible() lists the toast frames on screen, newest first
 -- (read only: for a Verify scene to outline one).
 --
+-- Look (Task #245): the suite's dialog shell (CreateWindow: title bar with
+-- the icon and the title in the toast's color, Blizzard's close X, the solid
+-- window background), the message in the body font, then the buttons as
+-- CreateClickPrompt lays them out (left ones from the bottom-left corner,
+-- side = "right" ones from the bottom-right; 110 wide or as wide as the
+-- label needs), then the countdown bar with the seconds left. In the DIALOG
+-- layer, as a toast may be.
+--
+-- Buttons: a click dismisses the toast, then runs its onClick; with buttons
+-- a click on the body does nothing. The X dismisses and answers nothing;
+-- right-click dismisses every toast. onExpire runs only on a timeout.
+--
+-- Hover: the mouse over any toast freezes every toast of the instance
+-- (their bars too) until it leaves them all; one shown meanwhile starts
+-- frozen.
+--
+-- Combat: frames are never made in combat. A toast that needs a new frame,
+-- or more buttons than the frame it would reuse has, waits (at most
+-- maxVisible, the oldest giving way) and shows when combat ends.
+--
 -- Capacity: at most maxVisible toasts exist at once. A new one at capacity
 -- releases the oldest at once (no fade), so a burst of any size never holds
 -- more frames, and at most twice maxVisible idle frames are kept for reuse.
 -- While suspended, new toasts wait (at most maxVisible; the oldest waiting
 -- one gives way) and appear on Resume with their normal duration.
--- GetCounts() reports { active, visible, pooled, created, queued }.
+-- GetCounts() reports { active, visible, pooled, created, queued } (queued
+-- counts the toasts waiting for Resume and for combat's end).
+--
+-- height is the least height: the toast grows to fit its message, buttons
+-- and bar, so position stacks on offset (the toasts before it plus gaps),
+-- not index.
 ---------------------------------------------------------------------------
 local UI = CobySuite_CobysLinkepedia.UI
+
+-- Layout: the body under the title bar, then the buttons' row, then the
+-- bar's row, each with its gap (in the click prompt's spacing)
+local L = {
+  PAD = 12, BODY_TOP = 32, BOTTOM = 10, ROW_GAP = 8,
+  BUTTON_W = 110, BUTTON_GAP = 8, BUTTON_TEXT_ROOM = 32,
+  BAR_H = 4, BAR_ROW = 12, LABEL_W = 28,
+}
 
 function UI.NewToast(opts)
   local MAX_VISIBLE     = opts.maxVisible or 5
@@ -48,12 +88,13 @@ function UI.NewToast(opts)
 
   local TC = utils.Colors or CobySuite_CobysLinkepedia.Utilities.Colors
   local Fonts = utils.Fonts or CobySuite_CobysLinkepedia.Utilities.Fonts
-  local Backdrops = utils.Backdrops or CobySuite_CobysLinkepedia.Utilities.Backdrops
-  local DEFAULT_ACCENT = opts.defaultAccentColor or TC.DISABLED_GRAY
+  local BUTTON_H = CobySuite_CobysLinkepedia.Utilities.ButtonSize.MEDIUM.height
+  local DEFAULT_ACCENT = opts.defaultAccentColor or TC.STATUS_GOLD
 
   local pool = {}
   local activeStack = {}
   local queue = {}          -- toasts requested while suspended
+  local combatQueue = {}    -- toasts that need frames, waiting for combat's end
   local created = 0         -- frames ever created by this instance
   local POOL_MAX = MAX_VISIBLE * 2
   local isHovered = false
@@ -61,7 +102,7 @@ function UI.NewToast(opts)
 
   -- Forward declarations
   local AcquireToast, ReleaseToast, RepositionStack, DismissToast, ForceRelease, ShowNow
-  local FreezeTimers, ThawTimers
+  local FreezeTimers, ThawTimers, StartTimer
   -- inst is forward-declared so CreateToastFrame's right-click handler
   -- can reference it as an upvalue. Without this, Lua resolves `inst`
   -- inside the closure as a global lookup at compile time (since
@@ -72,6 +113,17 @@ function UI.NewToast(opts)
   -------------------------------------------------------------------------
   -- Timer management
   -------------------------------------------------------------------------
+  -- A timeout runs the toast's onExpire, then fades it
+  StartTimer = function(toast, seconds)
+    toast._expireTime = GetTime() + seconds
+    toast._dismissTimer = C_Timer.NewTimer(seconds, function()
+      toast._dismissTimer = nil
+      local onExpire = toast._onExpire
+      DismissToast(toast)
+      if onExpire then onExpire() end
+    end)
+  end
+
   FreezeTimers = function()
     for _, toast in ipairs(activeStack) do
       if toast._dismissTimer then
@@ -85,11 +137,7 @@ function UI.NewToast(opts)
   ThawTimers = function()
     for _, toast in ipairs(activeStack) do
       if toast._remainingTime and toast._remainingTime > 0 then
-        toast._expireTime = GetTime() + toast._remainingTime
-        toast._dismissTimer = C_Timer.NewTimer(toast._remainingTime, function()
-          toast._dismissTimer = nil
-          DismissToast(toast)
-        end)
+        StartTimer(toast, toast._remainingTime)
         toast._remainingTime = nil
       end
     end
@@ -110,57 +158,76 @@ function UI.NewToast(opts)
   end
 
   -------------------------------------------------------------------------
+  -- Countdown bar
+  -------------------------------------------------------------------------
+  -- The time left: from the running timer, or the frozen remainder while
+  -- hovered or suspended
+  local function Remaining(f)
+    if f._dismissTimer then return math.max(0, (f._expireTime or 0) - GetTime()) end
+    return f._remainingTime or 0
+  end
+
+  local function PaintBar(f)
+    local duration = f._duration or 0
+    if duration <= 0 then return end
+    local left = Remaining(f)
+    local trackWidth = TOAST_WIDTH - 2 * L.PAD - L.LABEL_W
+    -- a texture at width 0 can draw at its natural size
+    f.barFill:SetWidth(math.max(0.01, trackWidth * math.min(1, left / duration)))
+    local seconds = math.ceil(left)
+    if seconds ~= f._barSeconds then
+      f._barSeconds = seconds
+      f.barLabel:SetText(seconds .. "s")
+    end
+  end
+
+  -------------------------------------------------------------------------
   -- Toast frame factory
   -------------------------------------------------------------------------
+  -- Hovering a child (the X, a button) must not count as leaving the toast
+  local function KeepHover(child)
+    if child.SetPropagateMouseMotion then child:SetPropagateMouseMotion(true) end
+  end
+
   local function CreateToastFrame()
-    local f = CreateFrame("Frame", nil, UIParent, "BackdropTemplate")
+    -- the icon is set per toast; passing one makes the title bar's icon
+    local f = UI.CreateWindow({
+      width = TOAST_WIDTH, height = TOAST_HEIGHT, strata = "DIALOG",
+      movable = false, toplevel = false, icon = 134400, title = "",
+    })
     created = created + 1
-    f:SetSize(TOAST_WIDTH, TOAST_HEIGHT)
-    f:SetBackdrop(Backdrops.CONTENT)
-    local tbg = TC.TOAST_BG
-    f:SetBackdropColor(tbg[1], tbg[2], tbg[3], tbg[4])
-    local cbr = TC.CONTENT_BORDER
-    f:SetBackdropBorderColor(cbr[1], cbr[2], cbr[3], cbr[4])
-    f:SetClampedToScreen(true)
-    f:SetFrameStrata("DIALOG")
-    f:EnableMouse(true)
-
-    -- Accent strip
-    f.accent = f:CreateTexture(nil, "OVERLAY")
-    f.accent:SetPoint("TOPLEFT", 3, -3)
-    f.accent:SetPoint("BOTTOMLEFT", 3, 3)
-    f.accent:SetWidth(3)
-
-    -- Icon
-    f.icon = f:CreateTexture(nil, "ARTWORK")
-    f.icon:SetSize(22, 22)
-    f.icon:SetPoint("LEFT", f.accent, "RIGHT", 6, 0)
-
-    -- Title
-    f.title = f:CreateFontString(nil, "OVERLAY", Fonts.SMALL)
-    f.title:SetJustifyH("LEFT")
+    f.buttons = {}
 
     -- Message
-    f.message = f:CreateFontString(nil, "OVERLAY", Fonts.DATA)
-    f.message:SetPoint("TOPLEFT", f.title, "BOTTOMLEFT", 0, -2)
-    f.message:SetPoint("RIGHT", f, "RIGHT", -22, 0)
+    f.message = f:CreateFontString(nil, "OVERLAY", Fonts.BODY)
+    f.message:SetPoint("TOPLEFT", f, "TOPLEFT", L.PAD, -L.BODY_TOP)
+    f.message:SetWidth(TOAST_WIDTH - 2 * L.PAD)
     f.message:SetJustifyH("LEFT")
-    local lg = TC.LIGHT_GRAY
-    f.message:SetTextColor(lg[1], lg[2], lg[3])
+    f.message:SetWordWrap(true)
 
-    -- Close button
-    f.closeBtn = CreateFrame("Button", nil, f)
-    f.closeBtn:SetSize(14, 14)
-    f.closeBtn:SetPoint("TOPRIGHT", -4, -4)
-    f.closeBtn:SetPropagateMouseMotion(true)
-    local closeText = f.closeBtn:CreateFontString(nil, "OVERLAY", Fonts.SMALL)
-    closeText:SetAllPoints()
-    closeText:SetText("\195\151")
-    local dg, hw = TC.DISABLED_GRAY, TC.HIGHLIGHT_WHITE
-    closeText:SetTextColor(dg[1], dg[2], dg[3])
-    f.closeBtn:SetScript("OnClick", function() DismissToast(f) end)
-    f.closeBtn:SetScript("OnEnter", function() closeText:SetTextColor(hw[1], hw[2], hw[3]) end)
-    f.closeBtn:SetScript("OnLeave", function() closeText:SetTextColor(dg[1], dg[2], dg[3]) end)
+    -- The X dismisses without answering
+    if f.CloseButton then
+      f.CloseButton:SetScript("OnClick", function() DismissToast(f) end)
+      KeepHover(f.CloseButton)
+    end
+
+    -- Countdown: a track in the bar gray, the fill in the toast's color,
+    -- the seconds left at its right
+    f.barTrack = f:CreateTexture(nil, "ARTWORK")
+    f.barTrack:SetHeight(L.BAR_H)
+    f.barTrack:SetWidth(TOAST_WIDTH - 2 * L.PAD - L.LABEL_W)
+    local bg = TC.BAR_BG
+    f.barTrack:SetColorTexture(bg[1], bg[2], bg[3], bg[4])
+    f.barFill = f:CreateTexture(nil, "OVERLAY")
+    f.barFill:SetPoint("TOPLEFT", f.barTrack, "TOPLEFT", 0, 0)
+    f.barFill:SetPoint("BOTTOMLEFT", f.barTrack, "BOTTOMLEFT", 0, 0)
+    f.barLabel = f:CreateFontString(nil, "OVERLAY", Fonts.DATA)
+    f.barLabel:SetJustifyH("RIGHT")
+    local lg = TC.LABEL_GRAY
+    f.barLabel:SetTextColor(lg[1], lg[2], lg[3])
+    f.barTrack:Hide()
+    f.barFill:Hide()
+    f.barLabel:Hide()
 
     -- Fade in animation (alpha + slide from right)
     f.fadeInAG = f:CreateAnimationGroup()
@@ -201,7 +268,7 @@ function UI.NewToast(opts)
     f:SetScript("OnMouseDown", function(self, button)
       if button == "RightButton" then
         inst.DismissAll()
-      elseif button == "LeftButton" and self._onClick then
+      elseif button == "LeftButton" and self._onClick and not self._dismissing then
         self._onClick()
         DismissToast(self)
       end
@@ -211,11 +278,68 @@ function UI.NewToast(opts)
     return f
   end
 
+  -- The frame's buttons: made only as needed (never in combat: Place holds
+  -- the toast until combat ends when it needs more than a frame has), reused with new text and click
+  local function ButtonOnClick(button)
+    local f = button:GetParent()
+    if f._dismissing then return end
+    local onClick = button._onClick
+    DismissToast(f)
+    if onClick then onClick() end
+  end
+
+  local function EnsureButtons(f, count)
+    for i = #f.buttons + 1, count do
+      local button = UI.CreateButton(f, { size = { L.BUTTON_W, BUTTON_H }, onClick = ButtonOnClick })
+      KeepHover(button)
+      button:Hide()
+      f.buttons[i] = button
+    end
+  end
+
+  -- Lays out the buttons in CreateClickPrompt's order at the given height
+  -- above the bottom edge
+  local function LayoutButtons(f, defs, y)
+    local lastLeft, lastRight
+    for i, def in ipairs(defs) do
+      local button = f.buttons[i]
+      button:SetText(def.text or "")
+      local width = def.width
+      if not width then
+        width = L.BUTTON_W
+        local label = button:GetFontString()
+        local needed = label and label:GetStringWidth()
+        if type(needed) == "number" and needed + L.BUTTON_TEXT_ROOM > width then width = needed + L.BUTTON_TEXT_ROOM end
+      end
+      button:SetSize(width, BUTTON_H)
+      button:ClearAllPoints()
+      if def.side == "right" then
+        if lastRight then button:SetPoint("RIGHT", lastRight, "LEFT", -L.BUTTON_GAP, 0)
+        else button:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -L.PAD, y) end
+        lastRight = button
+      else
+        if lastLeft then button:SetPoint("LEFT", lastLeft, "RIGHT", L.BUTTON_GAP, 0)
+        else button:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", L.PAD, y) end
+        lastLeft = button
+      end
+      button._onClick = def.onClick
+      button:Show()
+    end
+  end
+
   -------------------------------------------------------------------------
   -- Pool management
   -------------------------------------------------------------------------
   AcquireToast = function()
     return table.remove(pool) or CreateToastFrame()
+  end
+
+  -- Whether showing a toast with this many buttons would make a frame:
+  -- ShowNow reuses the pool's last frame, or at capacity the oldest toast's
+  local function NeedsNewFrames(buttonCount)
+    local f = pool[#pool]
+    if not f and #activeStack >= MAX_VISIBLE then f = activeStack[#activeStack] end
+    return not f or #f.buttons < buttonCount
   end
 
   ReleaseToast = function(f)
@@ -230,9 +354,20 @@ function UI.NewToast(opts)
       f._dismissTimer = nil
     end
     f._onClick = nil
+    f._onExpire = nil
+    f._duration = nil
+    f._barSeconds = nil
     f._dismissing = nil
     f._expireTime = nil
     f._remainingTime = nil
+    f:SetScript("OnUpdate", nil)
+    f.barTrack:Hide()
+    f.barFill:Hide()
+    f.barLabel:Hide()
+    for _, button in ipairs(f.buttons) do
+      button._onClick = nil
+      button:Hide()
+    end
     f.fadeInAG:Stop()
     f.fadeOutAG:Stop()
     f:Hide()
@@ -257,12 +392,16 @@ function UI.NewToast(opts)
   -------------------------------------------------------------------------
   -- Stack positioning
   -------------------------------------------------------------------------
+  -- offset is how far the toasts before this one reach, gaps included
+  -- (toasts grow for long messages, so index * height can overlap)
   RepositionStack = function()
+    local offset = 0
     for i, toast in ipairs(activeStack) do
       toast:ClearAllPoints()
       if positionFn then
-        positionFn(toast, i, TOAST_HEIGHT, TOAST_GAP)
+        positionFn(toast, i, TOAST_HEIGHT, TOAST_GAP, offset)
       end
+      offset = offset + toast:GetHeight() + TOAST_GAP
     end
   end
 
@@ -277,6 +416,7 @@ function UI.NewToast(opts)
       f._dismissTimer = nil
     end
     f._remainingTime = nil
+    f:SetScript("OnUpdate", nil)
     f.fadeInAG:Stop()
     f.fadeOutAG:Play()
   end
@@ -284,9 +424,36 @@ function UI.NewToast(opts)
   -------------------------------------------------------------------------
   -- Public instance
   -------------------------------------------------------------------------
-  -- Assignment, not redeclaration: `inst` is forward-declared above so
-  -- CreateToastFrame's right-click handler resolves it as an upvalue.
   inst = {}
+
+  -- A full waiting list gives up its oldest toast
+  local function Enqueue(list, showOpts)
+    if #list >= MAX_VISIBLE then table.remove(list, 1) end
+    list[#list + 1] = showOpts
+  end
+
+  -- Shows a toast now, or keeps it for Resume or for combat's end
+  local Place
+  local function FlushCombatQueue()
+    local waiting = combatQueue
+    combatQueue = {}
+    for _, showOpts in ipairs(waiting) do
+      Place(showOpts)
+    end
+  end
+
+  Place = function(showOpts)
+    if isSuspended then
+      Enqueue(queue, showOpts)
+      return
+    end
+    if InCombatLockdown() and NeedsNewFrames(showOpts.buttons and #showOpts.buttons or 0) then
+      Enqueue(combatQueue, showOpts)
+      CobySuite_CobysLinkepedia.Utilities.RunOutOfCombat(FlushCombatQueue, inst)
+      return
+    end
+    return ShowNow(showOpts)
+  end
 
   function inst.Show(showOpts)
     if not isEnabledFn() then return end
@@ -298,13 +465,48 @@ function UI.NewToast(opts)
       return
     end
 
-    if isSuspended then
-      if #queue >= MAX_VISIBLE then table.remove(queue, 1) end
-      queue[#queue + 1] = showOpts
-      return
-    end
+    return Place(showOpts)
+  end
 
-    return ShowNow(showOpts)
+  -- The title bar: the icon (hidden without one) and the title in the color
+  local function PaintTitle(toast, showOpts, color)
+    if toast.TitleText then
+      toast.TitleText:SetText(showOpts.title or "")
+      toast.TitleText:SetTextColor(color[1], color[2], color[3])
+    end
+    if toast.TitleIcon then
+      if showOpts.icon then
+        toast.TitleIcon:SetTexture(showOpts.icon)
+        toast.TitleIcon:Show()
+      else
+        toast.TitleIcon:Hide()
+      end
+    end
+  end
+
+  -- Lays out the buttons and the bar from the bottom edge up and sizes the
+  -- toast to fit them under the message (never below the least height)
+  local function LayoutBody(toast, showOpts, color)
+    local bottom = L.BOTTOM
+    if showOpts.countdown then
+      toast.barTrack:ClearAllPoints()
+      toast.barTrack:SetPoint("BOTTOMLEFT", toast, "BOTTOMLEFT", L.PAD, bottom + (L.BAR_ROW - L.BAR_H) / 2)
+      toast.barLabel:ClearAllPoints()
+      toast.barLabel:SetPoint("RIGHT", toast, "BOTTOMRIGHT", -L.PAD, bottom + L.BAR_ROW / 2)
+      toast.barFill:SetColorTexture(color[1], color[2], color[3], 1)
+      toast.barTrack:Show()
+      toast.barFill:Show()
+      toast.barLabel:Show()
+      bottom = bottom + L.BAR_ROW + L.ROW_GAP
+    end
+    local defs = showOpts.buttons
+    if defs and #defs > 0 then
+      EnsureButtons(toast, #defs)
+      LayoutButtons(toast, defs, bottom)
+      bottom = bottom + BUTTON_H + L.ROW_GAP
+    end
+    local needed = L.BODY_TOP + toast.message:GetStringHeight() + bottom
+    toast:SetHeight(math.max(TOAST_HEIGHT, math.ceil(needed)))
   end
 
   ShowNow = function(showOpts)
@@ -314,44 +516,33 @@ function UI.NewToast(opts)
     end
 
     local toast = AcquireToast()
-
-    -- Content
-    toast.title:SetText(showOpts.title or "")
-    toast.message:SetText(showOpts.message or "")
-
-    -- Icon
-    toast.title:ClearAllPoints()
-    if showOpts.icon then
-      toast.icon:SetTexture(showOpts.icon)
-      toast.icon:Show()
-      toast.title:SetPoint("TOPLEFT", toast.icon, "TOPRIGHT", 6, -4)
-      toast.title:SetPoint("RIGHT", toast, "RIGHT", -22, 0)
-    else
-      toast.icon:Hide()
-      toast.title:SetPoint("TOPLEFT", toast.accent, "TOPRIGHT", 8, -4)
-      toast.title:SetPoint("RIGHT", toast, "RIGHT", -22, 0)
-    end
-
-    -- Accent color
     local color = showOpts.color or DEFAULT_ACCENT
-    toast.accent:SetColorTexture(color[1], color[2], color[3], 1)
-    toast.title:SetTextColor(color[1], color[2], color[3])
+    local hasButtons = showOpts.buttons and #showOpts.buttons > 0
 
-    -- Click handler
-    toast._onClick = showOpts.onClick
+    PaintTitle(toast, showOpts, color)
+    toast.message:SetText(showOpts.message or "")
+    LayoutBody(toast, showOpts, color)
+
+    -- With buttons the answer is a button, so a stray click chooses nothing
+    toast._onClick = not hasButtons and showOpts.onClick or nil
+    toast._onExpire = showOpts.onExpire
 
     -- Duration and timer
     local duration = showOpts.duration or DEFAULT_DURATION
-    toast._expireTime = GetTime() + duration
+    toast._duration = duration
     toast._dismissing = false
 
     if not isHovered and not isSuspended then
-      toast._dismissTimer = C_Timer.NewTimer(duration, function()
-        toast._dismissTimer = nil
-        DismissToast(toast)
-      end)
+      StartTimer(toast, duration)
     else
+      toast._expireTime = GetTime() + duration
       toast._remainingTime = duration
+    end
+
+    if showOpts.countdown then
+      toast._barSeconds = nil
+      PaintBar(toast)
+      toast:SetScript("OnUpdate", PaintBar)   -- DismissToast clears it
     end
 
     -- Insert at top of stack
@@ -367,6 +558,7 @@ function UI.NewToast(opts)
 
   function inst.DismissAll()
     wipe(queue)
+    wipe(combatQueue)
     for i = #activeStack, 1, -1 do
       DismissToast(activeStack[i])
     end
@@ -392,7 +584,7 @@ function UI.NewToast(opts)
     local waiting = queue
     queue = {}
     for _, showOpts in ipairs(waiting) do
-      ShowNow(showOpts)
+      Place(showOpts)
     end
   end
 
@@ -401,7 +593,7 @@ function UI.NewToast(opts)
     for _, toast in ipairs(activeStack) do
       if toast:IsShown() then visible = visible + 1 end
     end
-    return { active = #activeStack, visible = visible, pooled = #pool, created = created, queued = #queue }
+    return { active = #activeStack, visible = visible, pooled = #pool, created = created, queued = #queue + #combatQueue }
   end
 
   function inst.Visible()

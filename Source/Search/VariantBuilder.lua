@@ -242,7 +242,7 @@ local function ChoicesKey()
       tostring(state.quality), table.concat(slots, ","))
   end
   -- The rank actually built, not the choice: a default rank resolves from
-  -- the client's rank info, which can arrive mid-build (8 data entries, then
+  -- the client's rank info, which can arrive mid-build (9 data entries, then
   -- a named maximum of 6), and the key must change with it
   return ("track|%s|%s|%s|%s|%s"):format(tostring(state.itemID), tostring(state.seasonKey), tostring(state.trackName),
     tostring(EffectiveRank()), tostring(state.trackQuality))
@@ -434,7 +434,7 @@ local function SetItem(itemID, variant, keepDetail)
     state.mode = DefaultMode()
   end
 
-  if itemID and not keepDetail and Search.SelectItem then Search.SelectItem(ItemRecord(itemID)) end
+  if itemID and not keepDetail then Search.SelectItem(ItemRecord(itemID)) end
   Refresh()
   rebuild:Call()
 end
@@ -1350,12 +1350,20 @@ local function Init()
   frame:SetScript("OnShow", function(self)
     self:RegisterEvent("ITEM_DATA_LOAD_RESULT")
     -- Opened by hand: build for the item the detail pane shows
+    local detail = Search.GetDetailItem()
     if not state.itemID then
-      local item = Search.GetDetailItem and Search.GetDetailItem()
-      if item and Variants.IsGear(item.itemID) then
-        SetItem(item.itemID)
+      if detail and Variants.IsGear(detail.itemID) then
+        SetItem(detail.itemID)
         return
       end
+    end
+    -- The detail pane beside the builder shows the builder's item (another
+    -- tab may have selected something else since), and nothing when it has
+    -- none; the builder's choices and result stay as they are
+    if state.itemID then
+      if not (detail and detail.itemID == state.itemID) then Search.SelectItem(ItemRecord(state.itemID)) end
+    else
+      Search.ClearDetail("No gear chosen", "Choose gear to build and its details show here.")
     end
     -- The recipe index may have finished while the tab was hidden
     PickUpRecipes()
@@ -1405,7 +1413,7 @@ function Search.OpenBuilder(itemID, variant)
     -- The usual open (it also fills Results), without leaving the cursor in
     -- the search box, where typing would switch back to Results
     Search.ToggleWindow()
-    if window.SearchBox then window.SearchBox:ClearFocus() end
+    window.SearchBox:ClearFocus()
   end
   window:SetTab("variants")
   if itemID then SetItem(itemID, variant) end

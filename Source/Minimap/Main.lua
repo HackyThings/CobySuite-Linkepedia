@@ -62,8 +62,9 @@ function Minimap_Module.Initialize()
   Debug.Log("INIT", "Minimap module initialized (angle: %d)", launcher:GetAngle())
 end
 
--- Listen for config changes to show/hide button. A nil key (Defaults, a
--- restored snapshot) means any option may have changed, so re-read it.
+-- Listen for config changes to show/hide button. A nil key (the config was
+-- reset at load, a restored snapshot) means any option may have changed, so
+-- re-read it.
 local configListener = { ReceiveEvent = function(_, eventName, key)
   if key == nil or key == Config.Options.SHOW_MINIMAP_BUTTON then
     launcher:RefreshShown()

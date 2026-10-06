@@ -94,8 +94,8 @@ local function SetOpen(open)
   ApplyOpenState()
 end
 
--- For the Taint suite: open or close the panel as its tab and close button
--- do, and whether it is open
+-- For the Taint suite and the Verify actions: open or close the panel as its
+-- tab and close button do, and whether it is open
 MacroTokens._test = { SetOpen = SetOpen, IsOpen = IsOpen }
 
 -------------------------------------------------------------------------------

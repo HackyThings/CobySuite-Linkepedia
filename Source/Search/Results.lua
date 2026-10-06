@@ -1,5 +1,4 @@
 -- Search Results: TableHeader + ScrollBox with sortable, resizable columns
--- Follows CobySniper's proven column-based row rendering pattern
 --
 -- Performance notes:
 --   - Browsing and text search build the same kind of list: (itemID, handle)
@@ -153,10 +152,6 @@ local function Pause()
   end
 end
 
--- Runs fn(Pause) across frames and calls onDone with a table of its return
--- values. waitsForCombat (a boolean, or a function read before every slice):
--- no slice runs while the player is in combat (combatText goes on the
--- overlay meanwhile). kind names the job for GetListState.
 local ShowOverlay   -- assigned with the overlay below
 local function StopJob()
   jobActive = false
@@ -164,6 +159,10 @@ local function StopJob()
   jobFrame:SetScript("OnUpdate", nil)
 end
 
+-- Runs fn(Pause) across frames and calls onDone with a table of its return
+-- values. waitsForCombat (a boolean, or a function read before every slice):
+-- no slice runs while the player is in combat (combatText goes on the
+-- overlay meanwhile). kind names the job for GetListState.
 local function RunJob(fn, onDone, waitsForCombat, combatText, kind)
   StopJob()
   local serial = buildSerial
@@ -209,13 +208,13 @@ end
 local COLUMNS = {
   { key = "name",      label = "Item Name",  width = 182, sortable = true, justify = "LEFT",   tooltip = "Item name, colored by quality" },
   { key = "itemLevel", label = "iLvl",       width = 38,  sortable = true, justify = "CENTER", tooltip = "Item level" },
-  { key = "type",      label = "Type",       width = 90,  sortable = true, justify = "LEFT",   tooltip = "Item class (Weapon, Armor, etc.)" },
-  { key = "subType",   label = "Subtype",    width = 92,  sortable = true, justify = "LEFT",   tooltip = "Item subclass (Cloth, Dagger, etc.)" },
+  { key = "type",      label = "Type",       width = 90,  sortable = true, justify = "LEFT",   tooltip = "Item type, such as Weapon or Armor" },
+  { key = "subType",   label = "Subtype",    width = 92,  sortable = true, justify = "LEFT",   tooltip = "Item subtype, such as Cloth or Dagger" },
   { key = "expansion", label = "Expac",      width = 84,  sortable = true, justify = "CENTER", tooltip = "Expansion the item belongs to" },
   { key = "quality",   label = "Quality",    width = 74,  sortable = true, justify = "CENTER", tooltip = "Item quality, such as Common, Rare or Epic" },
   { key = "itemID",    label = "ID",         width = 56,  sortable = true, justify = "RIGHT",  tooltip = "Numeric item ID" },
   { key = "reqLevel",  label = "Req",        width = 37,  sortable = true, justify = "CENTER", tooltip = "Required player level" },
-  -- Trailing spacer that absorbs leftover width, matching CobySniper's tables.
+  -- Trailing spacer that absorbs leftover width.
   -- Stretching a real data column instead cost it its divider and its resize
   -- handle, and inverted it whenever the window was narrower than the columns.
   { key = "_pad",      label = "",                        sortable = false,                    stretch = true },
@@ -294,6 +293,9 @@ local function EnsureRowStructure(row, columns)
       cell.text = row:CreateFontString(nil, "OVERLAY", Utilities.Fonts.DATA)
       cell.text:SetJustifyH(colDef.justify or "LEFT")
     end
+    -- Two lines fill a row: a longer name ends in an ellipsis rather than
+    -- spilling over the rows beside it (the tooltip has it whole)
+    cell.text:SetMaxLines(2)
     row._cells[i] = cell
   end
 end
@@ -426,8 +428,9 @@ end
 
 local function InitRow(row, pos)
   if not row._initialized then
-    -- Highlight
+    -- Highlight, and the mark of the item the detail pane shows
     CobySuite_CobysLinkepedia.UI.AddHoverHighlight(row)
+    row.Selected = Search.AddSelectedMark(row)
 
     row:RegisterForClicks("LeftButtonUp", "RightButtonUp")
 
@@ -449,7 +452,6 @@ local function InitRow(row, pos)
   local item = ResolveItem(pos)
   if not item then return end
 
-  -- Populate columns
   PopulateRow(row, item, tableHeader:GetColumns())
   if not item._fe then
     RequestRowData(row, item)
@@ -457,6 +459,7 @@ local function InitRow(row, pos)
 
   -- Alternating bg from the list position
   Utilities.AddAlternatingRowBg(row, pos)
+  row.Selected:SetShown(Search.IsSelected(item.itemID))
 end
 
 -------------------------------------------------------------------------------
@@ -484,7 +487,7 @@ function Search.ShowContextMenu(anchor, item)
 
     -- Each entry puts its text into chat (the open chat box, or a newly
     -- opened one); nothing here claims to copy to the clipboard
-    rootDescription:CreateButton("Link item in chat", function()
+    rootDescription:CreateButton("Link in Chat", function()
       Search.LinkItemToChat(item.itemID)
     end)
     rootDescription:CreateButton("Send name to chat", function()
@@ -506,7 +509,7 @@ function Search.ShowContextMenu(anchor, item)
 
     if CobysLinkepedia.Variants.IsGear(item.itemID) then
       rootDescription:CreateDivider()
-      rootDescription:CreateButton("Build variant", function()
+      rootDescription:CreateButton("Build Variant", function()
         Search.OpenBuilder(item.itemID)
       end)
     end
@@ -537,6 +540,20 @@ function Search.InitResults(window)
     -- Columns above their minimum shrink to fit the table's width, so a
     -- narrow window or oversized saved widths never push a column out of view
     fitToWidth = true,
+    -- A double-click on a column's edge fits it to the rows on screen (their
+    -- text as drawn, with the name's icon), never the whole database
+    measureColumn = function(colIndex)
+      if not scrollBox then return nil end
+      local widest = 0
+      scrollBox:ForEachFrame(function(row)
+        local cell = row._cells and row._cells[colIndex]
+        if cell and cell.text and cell.text:IsShown() then
+          local pad = cell.icon and (ICON_SIZE + 12) or 8
+          widest = math.max(widest, math.ceil(cell.text:GetUnboundedStringWidth() or 0) + pad)
+        end
+      end)
+      return widest > 0 and widest or nil
+    end,
     onColumnResize = function()
       if not scrollBox then return end
       -- Reposition cells in visible rows; no object recreation needed
@@ -558,21 +575,14 @@ function Search.InitResults(window)
   -- so they need the same clipping or a narrow window spills row text over the
   -- scrollbar and detail pane while the header above it stays clipped.
   scrollBox:SetClipsChildren(true)
-  if Search._scanStatusFrame then
-    scrollBox:SetPoint("BOTTOMRIGHT", Search._scanStatusFrame, "TOPRIGHT", 0, -4)
-  else
-    scrollBox:SetPoint("BOTTOMRIGHT", Search.ContentEdge, "BOTTOMRIGHT", 0, 104)
-  end
+  scrollBox:SetPoint("BOTTOMRIGHT", Search._scanStatusFrame, "TOPRIGHT", 0, -4)
 
-  -- ScrollBar
   scrollBar = CreateFrame("EventFrame", nil, window, "MinimalScrollBar")
   scrollBar:SetPoint("TOPLEFT", scrollBox, "TOPRIGHT", 4, 0)
   scrollBar:SetPoint("BOTTOMLEFT", scrollBox, "BOTTOMRIGHT", 4, 0)
 
-  -- DataProvider
   dataProvider = CreateDataProvider()
 
-  -- ScrollView
   scrollView = CreateScrollBoxListLinearView()
   scrollView:SetElementExtent(ROW_HEIGHT)
   scrollView:SetElementInitializer("Button", function(row, data)
@@ -581,6 +591,16 @@ function Search.InitResults(window)
 
   ScrollUtil.InitScrollBoxListWithScrollBar(scrollBox, scrollBar, scrollView)
   scrollBox:SetDataProvider(dataProvider)
+
+  -- The selected mark follows the detail pane: it is keyed by item ID, so a
+  -- sort or a scroll that brings the item back marks it again
+  Search.WatchSelection(function()
+    scrollBox:ForEachFrame(function(row)
+      if row.Selected then
+        row.Selected:SetShown(row.itemData ~= nil and Search.IsSelected(row.itemData.itemID))
+      end
+    end)
+  end)
 
   -- Empty-state label, same treatment as Coby's Currency Searcher: centred
   -- grey text over the list rather than an unexplained black void.
@@ -612,15 +632,34 @@ local function UpdateEmptyState()
     return
   end
 
+  local teal = Utilities.Colors.TEXT_TEAL
   if Database.GetCount() == 0 then
-    emptyLabel:SetText(
-      "Your item database is empty.\n" ..
-      "Press " .. Utilities.WrapColor(Utilities.Colors.TEXT_TEAL, "Build")
-        .. " below, or use " .. Utilities.WrapColor(Utilities.Colors.TEXT_TEAL, "/lp build")
-        .. ", to scan the item cache."
-    )
+    local ok, status = pcall(CobysLinkepedia.Scanner.GetStatus)
+    if ok and type(status) == "table" and status.isActive then
+      emptyLabel:SetText("Your database is being built.\nItems appear here as they are found.")
+    else
+      emptyLabel:SetText(
+        "Your item database is empty.\n" ..
+        "Select " .. Utilities.WrapColor(teal, "Build") .. " below, or type "
+          .. Utilities.WrapColor(teal, "/lp build") .. ". Building takes a few minutes and pauses in combat."
+      )
+    end
   else
-    emptyLabel:SetText("No items match your search.")
+    -- A next step: the filters first, then a search that needs every word
+    local hint
+    local filtered = false
+    for _, key in ipairs({ "type", "quality", "expansion" }) do
+      local value = currentFilters[key]
+      if value ~= nil and value ~= false then filtered = true end
+    end
+    if filtered then
+      hint = "Select " .. Utilities.WrapColor(teal, "Clear") .. " to remove the quality, type and expansion filters."
+    elseif SearchMode() ~= "any" and strfind(strtrim(currentQuery or ""), "%s") then
+      hint = "Try " .. Utilities.WrapColor(teal, "Any word") .. " to match at least one of the words."
+    elseif (currentQuery or "") ~= "" then
+      hint = "Try a shorter name or check the spelling."
+    end
+    emptyLabel:SetText("No items match your search." .. (hint and ("\n" .. hint) or ""))
   end
   emptyLabel:Show()
 end
@@ -640,7 +679,8 @@ EnsureOverlay = function()
   if sortingOverlay or not scrollBox then return end
   sortingOverlay = CreateFrame("Frame", nil, scrollBox)
   sortingOverlay:SetAllPoints()
-  sortingOverlay:SetFrameStrata("DIALOG")
+  -- In the window's own layer (only dialogs, popups and tooltip-like panels
+  -- draw above MEDIUM); ShowOverlay lifts it above the rows (OverlayOnTop)
 
   sortingOverlay.bg = sortingOverlay:CreateTexture(nil, "BACKGROUND")
   sortingOverlay.bg:SetAllPoints()
@@ -652,9 +692,16 @@ EnsureOverlay = function()
   sortingOverlay:Hide()
 end
 
+-- Above the rows however the window was raised since: the rows are the
+-- ScrollBox's descendants a few levels up
+local function OverlayOnTop()
+  sortingOverlay:SetFrameLevel(math.min(scrollBox:GetFrameLevel() + 50, 9000))
+end
+
 ShowOverlay = function(text)
   EnsureOverlay()
   if not sortingOverlay then return end
+  OverlayOnTop()
   sortingOverlay.text:SetText(text or "Sorting items...")
   sortingOverlay:Show()
 end
@@ -668,8 +715,7 @@ end
 -------------------------------------------------------------------------------
 -- Hands the current arrays to the ScrollBox. The provider is Blizzard's
 -- virtual IndexRangeDataProvider (Blizzard_SharedXML): its elements are the
--- integers 1..n with no backing table, so this is O(1) against the n-element
--- insert the old path paid. The list view branches on IsVirtual() itself, and
+-- integers 1..n with no backing table, so this is O(1). The list view branches on IsVirtual() itself, and
 -- on a provider reassignment it re-initialises every visible frame instead of
 -- matching frames by element data ("we never try and recycle" in
 -- ScrollBoxListView.lua, ValidateDataRange), so integer positions cannot
@@ -1156,6 +1202,13 @@ function Search.GetSearchMode()
   return SearchMode()
 end
 
+-- How many items the list on show holds, or nil while it is still building
+-- (the window's footer leads with it)
+function Search.GetResultSummary()
+  if builder or not presented.base then return nil end
+  return resultCount
+end
+
 -- The search box's mode picker. A typed search runs again in the new mode.
 function Search.SetSearchMode(mode)
   if not SEARCH_MODES[mode] or mode == SearchMode() then return end
@@ -1618,6 +1671,16 @@ function Search.SetActiveTab(tabName)
   end
   if Search._scanStatusFrame then
     Search._scanStatusFrame:SetShown(isResults)
+  end
+  -- An empty pane the Variants tab worded ("No gear chosen") gets its usual
+  -- words back on the other tabs
+  if tabName ~= "variants" and tabName ~= "stats" and Search.GetDetailItem and not Search.GetDetailItem()
+      and Search.ClearDetail then
+    Search.ClearDetail()
+  end
+  -- The footer's match count belongs to Results alone
+  if CobysLinkepediaSearchWindow and CobysLinkepediaSearchWindow.UpdateStatusBar then
+    CobysLinkepediaSearchWindow:UpdateStatusBar()
   end
 end
 

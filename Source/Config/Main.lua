@@ -59,7 +59,6 @@ local base = CobySuite_CobysLinkepedia.Config.New({
   end,
 })
 
--- Install onto CobysLinkepedia.Config namespace
 Config.Options        = base.Options
 Config.Defaults       = base.Defaults
 Config.IsValidOption  = base.IsValidOption
@@ -74,7 +73,6 @@ function Config.InitializeData()
   -- Initialize config SavedVariable (shared base handles defaults + stale cleanup)
   base.InitializeData()
 
-  -- Initialize COBYS_LINKEPEDIA_STATE
   if type(COBYS_LINKEPEDIA_STATE) ~= "table" then
     COBYS_LINKEPEDIA_STATE = {
       version = CobysLinkepedia.version,
@@ -92,13 +90,12 @@ function Config.InitializeData()
   -- Saved variants repair their own records (Variants/Store.lua)
   CobysLinkepedia.Variants.ValidateSaved()
 
-  -- Initialize COBYS_LINKEPEDIA_WINDOW_STATE
   if type(COBYS_LINKEPEDIA_WINDOW_STATE) ~= "table" then
     COBYS_LINKEPEDIA_WINDOW_STATE = {}
   end
 
-  -- Initialize COBYS_LINKEPEDIA_DB. Its layout belongs to Database, which is
-  -- the only file allowed to know what lives inside it.
+  -- Initialize COBYS_LINKEPEDIA_DB. Its layout belongs to Database; only
+  -- scanState is shared (Scanner, Core).
   CobysLinkepedia.Database.EnsureStorage()
 end
 

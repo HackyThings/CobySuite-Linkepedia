@@ -1,6 +1,6 @@
 -- Config Window: the addon's settings window, the suite's standard one
 -- (CobySuite.UI.CreateSettingsWindow): a sidebar of categories, staged edits
--- that Apply writes through Config.Set, Cancel and Defaults, and a Guide
+-- that Apply writes through Config.Set, Undo edits and Defaults, and a Guide
 -- button beside Defaults that opens the feature guide. Opened from
 -- /lp settings, the minimap button and the Options > AddOns entry
 -- (registered at the bottom). Built at load, so opening it never creates
@@ -235,10 +235,13 @@ local window = UI.CreateSettingsWindow({
           options = {
             { value = "Quiet", label = "Quiet", description = "Only answers to your commands, and warnings" },
             { value = "Normal", label = "Normal", description = "Also says when a scan starts and finishes" },
-            { value = "Verbose", label = "Detailed", description = "Also reports each step of a scan" },
+            { value = "Verbose", label = "Verbose", description = "Also reports each step of a scan" },
           },
         }
-        panel:Preview{ caption = "Example", text = Examples.MessagesText }
+        panel:Preview{
+          caption = "Example", text = Examples.MessagesText,
+          description = "Grey lines are examples this level keeps out of chat.",
+        }
       end,
     },
   },

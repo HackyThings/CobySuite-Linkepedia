@@ -1,5 +1,7 @@
 -- Scan Status: the Results tab's footer with scan controls, progress bar and
--- details (hidden on the other tabs)
+-- details (hidden on the other tabs). While no scan runs it folds to its
+-- control row (Idle Scan, Expand, Build or Rebuild), and the list above it
+-- takes the room; a running or paused scan opens it to the full panel.
 
 local Search = CobysLinkepedia.Search
 local Scanner = CobysLinkepedia.Scanner
@@ -7,10 +9,8 @@ local Utilities = CobysLinkepedia.Utilities
 local Debug = CobysLinkepedia.Debug
 
 local FOOTER_H = 60
+local COMPACT_H = 28   -- the control row alone, while no scan runs
 
--------------------------------------------------------------------------------
--- Format ETA into human-readable string
--------------------------------------------------------------------------------
 local FormatETA = CobysLinkepedia.Utilities.FormatDuration
 
 -------------------------------------------------------------------------------
@@ -33,7 +33,7 @@ function Search.InitScanStatus(window)
   f.ProgressBg = f:CreateTexture(nil, "BACKGROUND")
   f.ProgressBg:SetHeight(14)
   f.ProgressBg:SetPoint("TOPLEFT", 8, -6)
-  f.ProgressBg:SetPoint("RIGHT", -200, 0)
+  f.ProgressBg:SetPoint("RIGHT", -220, 0)   -- clear of Cancel, Expand and Build
   f.ProgressBg:SetColorTexture(unpack(Utilities.Colors.BAR_BG))
 
   -- Progress bar fill
@@ -60,30 +60,45 @@ function Search.InitScanStatus(window)
     return nil
   end
 
+  local function HasItems()
+    return (CobysLinkepedia.Database.GetCount() or 0) > 0
+  end
+
+  -- The same words as the guide's and the settings' buttons; header and body
+  -- are read at each hover, so Build says Rebuild once items are stored
   local KEY = Utilities.Colors.TEXT_GOLD
   local function ScanTooltip(button, header, body)
     local W = CobySuite_CobysLinkepedia.Utilities.WrapColor
-    CobySuite_CobysLinkepedia.UI.AddRichTooltip(button, header, {
-      body,
-      " ",
-      W(KEY, "Shift-click") .. ": faster.  " .. W(KEY, "Ctrl+Shift-click") .. ": fastest.",
-      { text = "Both can stutter; Cancel stops a scan.", color = Utilities.Colors.WARNING_RED },
-    })
+    CobySuite_CobysLinkepedia.UI.AddDynamicTooltip(button, function(tip)
+      local white = Utilities.Colors.HIGHLIGHT_WHITE
+      tip:SetText(header(), white[1], white[2], white[3], 1, true)
+      tip:AddLine(body(), nil, nil, nil, true)
+      tip:AddLine(" ")
+      tip:AddLine(W(KEY, "Shift-click") .. ": faster.  " .. W(KEY, "Ctrl+Shift-click") .. ": fastest.", nil, nil, nil, true)
+      local red = Utilities.Colors.WARNING_RED
+      tip:AddLine("Both can stutter; Cancel stops a scan.", red[1], red[2], red[3], true)
+    end, { fillable = true })
   end
 
   local buildBtn = Utilities.CreateButton(f, {
-    text = "Build", size = { 55, 20 }, fontSize = 11,
-    point = { "TOPRIGHT", f, "TOPRIGHT", -6, -3 },
+    text = "Build", size = { 72, 20 }, fontSize = 11,
+    point = { "TOPRIGHT", f, "TOPRIGHT", -6, -4 },
     onClick = function() Scanner.StartBuild(nil, IntensityFromModifiers()) end,
   })
-  ScanTooltip(buildBtn, "Build", "Rebuild from scratch; asks first if items are stored.")
+  ScanTooltip(buildBtn,
+    function() return HasItems() and "Rebuild" or "Build" end,
+    function()
+      if HasItems() then return "Start over and build your item database from scratch. Asks first." end
+      return "Build your item database. It runs in the background and pauses in combat."
+    end)
 
   local expandBtn = Utilities.CreateButton(f, {
-    text = "Expand", size = { 55, 20 }, fontSize = 11,
+    text = "Expand", size = { 60, 20 }, fontSize = 11,
     point = { "RIGHT", buildBtn, "LEFT", -Utilities.Spacing.BUTTON_GAP, 0 },
     onClick = function() Scanner.StartExpand(IntensityFromModifiers()) end,
   })
-  ScanTooltip(expandBtn, "Expand", "Add missing items and keep your database.")
+  ScanTooltip(expandBtn, function() return "Expand" end,
+    function() return "Add missing items without starting over, including items from a new patch or an unfinished scan." end)
 
   local cancelBtn = Utilities.CreateButton(f, {
     text = "Cancel", size = { 55, 20 }, fontSize = 11,
@@ -147,6 +162,19 @@ function Search.InitScanStatus(window)
     local status = Scanner.GetStatus()
     if not status then return end
 
+    -- Full panel while a scan runs (paused too), the control row otherwise;
+    -- the height moves only when the state does
+    local compact = not status.isActive
+    if compact ~= f.compact then
+      f.compact = compact
+      f:SetHeight(compact and COMPACT_H or FOOTER_H)
+      for _, region in ipairs({ f.ProgressBg, f.ProgressBar, f.ProgressPct, f.DetailText, f.ItemText, f.CancelBtn }) do
+        region:SetShown(not compact)
+      end
+      f.IdleCB:ClearAllPoints()
+      f.IdleCB:SetPoint("RIGHT", compact and f.ExpandBtn or f.CancelBtn, "LEFT", -6, 0)
+    end
+
     if status.isActive then
       local pct = status.position / math.max(status.upperBound, 1)
       local barWidth = f.ProgressBg:GetWidth()
@@ -174,8 +202,8 @@ function Search.InitScanStatus(window)
       if status.intensity then
         parts[#parts] = parts[#parts] .. " (" .. status.intensity .. ")"
       end
-      table.insert(parts, string.format("%d / %d", status.position, status.upperBound))
-      table.insert(parts, status.itemsFound .. " found")
+      table.insert(parts, string.format("%s / %s", BreakUpLargeNumbers(status.position), BreakUpLargeNumbers(status.upperBound)))
+      table.insert(parts, BreakUpLargeNumbers(status.itemsFound) .. " found")
       local rate = status.rate
       if rate > 0 then
         table.insert(parts, math.floor(rate) .. "/s")
@@ -222,8 +250,10 @@ function Search.InitScanStatus(window)
         f.ItemText:SetTextColor(unpack(Utilities.Colors.DISABLED_GRAY))
       end
 
+      f.BuildBtn:SetText(HasItems() and "Rebuild..." or "Build")
       f.BuildBtn:Enable()
-      f.ExpandBtn:Enable()
+      -- Expand adds to a database; with none there is nothing to add to
+      f.ExpandBtn:SetEnabled(HasItems())
       f.CancelBtn:Disable()
       f.IdleCB:Show()
     end
@@ -233,6 +263,9 @@ function Search.InitScanStatus(window)
   f:SetScript("OnUpdate", (CobySuite_CobysLinkepedia.Utilities.Throttle(0.5, function(self)
     self:UpdateDisplay()
   end)))
+
+  -- The right height before the first tick, so the list never jumps
+  f:UpdateDisplay()
 
   Search._scanStatusFrame = f
 end

@@ -1,5 +1,7 @@
 -- Detail Pane: panel showing item information, beside every tab but Stats
--- Shows empty state when no item is selected. Below the item's fields, the
+-- With no item it shows an empty-state card. Under the item's name: its type,
+-- item level, required level and expansion, its ID with Link in Chat, the
+-- link string and URL fields. Below the item's fields, the
 -- variants section lists its saved and captured variants (a scrolling
 -- item list of variant entries, Search/VariantActions.lua) and, for gear,
 -- a Build Variant button that opens the Variants tab on it.
@@ -9,6 +11,8 @@ local Utilities = CobysLinkepedia.Utilities
 local Debug = CobysLinkepedia.Debug
 
 local FIELD_RIGHT = 40   -- a field's right end to the pane's: room for its copy icon
+local EMPTY_TITLE = "No item selected"
+local EMPTY_TEXT = "Select an item in a list and its details show here."
 local GRIP_WIDTH = 8
 
 local detailFrame = nil
@@ -16,20 +20,21 @@ local currentItem = nil
 local cancelLinkLoad = nil   -- the pending link load; a newer selection cancels it
 
 -------------------------------------------------------------------------------
--- Helper: show all detail content elements
+-- The content widgets that show and hide together
 -------------------------------------------------------------------------------
+local CONTENT = {
+  "Icon", "IconButton", "ItemName", "QualityText", "Divider", "InfoText", "ItemIDLabel", "LinkButton",
+  "LinkLabel", "LinkBox", "WowheadLabel", "WowheadBox", "VariantsLabel", "VariantsBox",
+}
+
 local function ShowContent(f)
-  f.Icon:Show()
-  f.ItemName:Show()
-  f.QualityText:Show()
-  f.Divider:Show()
-  f.ItemIDLabel:Show()
-  f.LinkLabel:Show()
-  f.LinkBox:Show()
-  f.WowheadLabel:Show()
-  f.WowheadBox:Show()
-  f.VariantsLabel:Show()
-  f.VariantsBox:Show()
+  for _, key in ipairs(CONTENT) do f[key]:Show() end
+end
+
+local function HideContent(f)
+  for _, key in ipairs(CONTENT) do f[key]:Hide() end
+  f.BuildButton:Hide()
+  f.LoadingText:Hide()
 end
 
 -------------------------------------------------------------------------------
@@ -44,12 +49,16 @@ local function CreateDetailPane(parent)
   local bg = Utilities.Colors.CONTENT_BG
   f:SetBackdropColor(bg[1], bg[2], bg[3], bg[4])
 
-  -- Empty state placeholder (shown when no item selected)
-  f.EmptyText = f:CreateFontString(nil, "OVERLAY", Utilities.Fonts.DATA)
-  f.EmptyText:SetPoint("CENTER")
-  f.EmptyText:SetText("Select an item to\nview details")
-  f.EmptyText:SetTextColor(unpack(Utilities.Colors.DISABLED_GRAY))
-  f.EmptyText:SetJustifyH("CENTER")
+  -- Empty state (no item selected): the shared card, its words set by
+  -- Search.ClearDetail
+  f.emptyTitle, f.emptyText = EMPTY_TITLE, EMPTY_TEXT
+  f.EmptyCard = CobySuite_CobysLinkepedia.UI.CreateStatusCard(f, {
+    icon = "Interface\\Icons\\INV_Misc_Spyglass_03",
+    title = function() return f.emptyTitle end,
+    description = function() return f.emptyText end,
+  })
+  f.EmptyCard:SetPoint("TOPLEFT", 10, -10)
+  f.EmptyCard:SetPoint("TOPRIGHT", -10, -10)
 
   -- Item icon
   f.Icon = f:CreateTexture(nil, "ARTWORK")
@@ -89,15 +98,37 @@ local function CreateDetailPane(parent)
   f.Divider:SetColorTexture(dg[1], dg[2], dg[3], dg[4])
   f.Divider:Hide()
 
-  -- Item ID
+  -- What the item is: type and subtype, then item level, required level
+  -- and expansion, whichever the item has
+  f.InfoText = f:CreateFontString(nil, "OVERLAY", Utilities.Fonts.DATA)
+  f.InfoText:SetPoint("TOPLEFT", f.Divider, "BOTTOMLEFT", 0, -8)
+  f.InfoText:SetPoint("RIGHT", f, "RIGHT", -12, 0)
+  f.InfoText:SetJustifyH("LEFT")
+  f.InfoText:SetWordWrap(true)
+  f.InfoText:SetSpacing(2)
+  f.InfoText:SetTextColor(unpack(Utilities.Colors.LIGHT_GRAY))
+  f.InfoText:Hide()
+
+  -- Item ID, with the pane's main action beside it
   f.ItemIDLabel = f:CreateFontString(nil, "OVERLAY", Utilities.Fonts.DATA)
-  f.ItemIDLabel:SetPoint("TOPLEFT", f.Divider, "BOTTOMLEFT", 0, -8)
+  f.ItemIDLabel:SetPoint("TOPLEFT", f.InfoText, "BOTTOMLEFT", 0, -12)
   f.ItemIDLabel:SetTextColor(unpack(Utilities.Colors.LABEL_GRAY))
   f.ItemIDLabel:Hide()
 
+  f.LinkButton = Utilities.CreateButton(f, {
+    text = "Link in Chat", size = { 96, 20 }, fontSize = 11,
+    tooltip = "Put this item's link in chat. You choose when to send it.",
+    onClick = function()
+      if currentItem then Search.LinkItemToChat(currentItem.itemID) end
+    end,
+  })
+  f.LinkButton:SetPoint("RIGHT", f, "RIGHT", -10, 0)
+  f.LinkButton:SetPoint("TOP", f.ItemIDLabel, "TOP", 0, 4)
+  f.LinkButton:Hide()
+
   -- Link string (copyable)
   f.LinkLabel = f:CreateFontString(nil, "OVERLAY", Utilities.Fonts.SMALL)
-  f.LinkLabel:SetPoint("TOPLEFT", f.ItemIDLabel, "BOTTOMLEFT", 0, -8)
+  f.LinkLabel:SetPoint("TOPLEFT", f.ItemIDLabel, "BOTTOMLEFT", 0, -10)
   f.LinkLabel:SetText("Link string:")
   f.LinkLabel:SetTextColor(unpack(Utilities.Colors.LABEL_GRAY))
   f.LinkLabel:Hide()
@@ -218,6 +249,36 @@ function Search.GetDetailItem()
   return currentItem
 end
 
+-- The pane's item facts from the stored record (not every caller passed
+-- through the Results row's enrichment), the client's instant data filling a
+-- missing type. Unknown or inapplicable values are left out.
+local function InfoText(item)
+  local classID, subClassID = item._classID, item._subClassID
+  if not classID or classID < 0 then
+    local _, _, _, _, _, cid, scid = C_Item.GetItemInfoInstant(item.itemID)
+    classID, subClassID = cid, scid
+  end
+  local kind = classID and classID >= 0 and Utilities.GetClassName(classID) or nil
+  local sub = kind and Utilities.GetSubClassName(classID, subClassID) or nil
+  if kind and sub and sub ~= "" and sub ~= kind then kind = kind .. ", " .. sub end
+
+  -- Level 1 is what an item with no level of its own reads as: left out
+  local facts = {}
+  if (item.itemLevel or 0) > 1 then facts[#facts + 1] = "Item level " .. item.itemLevel end
+  if (item.reqLevel or 0) > 1 then facts[#facts + 1] = "Requires level " .. item.reqLevel end
+  local expID = item._expansionID
+  if expID and expID >= 0 then
+    -- The game's own expansion name, the short list's when it has none
+    local name = _G["EXPANSION_NAME" .. expID] or Utilities.ExpansionNames[expID]
+    if name then facts[#facts + 1] = name end
+  end
+
+  local lines = {}
+  if kind and kind ~= "" then lines[#lines + 1] = kind end
+  if #facts > 0 then lines[#lines + 1] = table.concat(facts, "  |  ") end
+  return table.concat(lines, "\n")
+end
+
 -- The divider goes under whichever is lower, the icon or the wrapped name
 -- with its quality line. The name wraps again when the pane's width changes,
 -- so this runs on resize too.
@@ -237,7 +298,7 @@ function Search.ShowDetail(item)
   currentItem = item
 
   -- Hide empty state, show content
-  detailFrame.EmptyText:Hide()
+  detailFrame.EmptyCard:Hide()
   detailFrame.LoadingText:Show()
   ShowContent(detailFrame)
 
@@ -252,6 +313,10 @@ function Search.ShowDetail(item)
   detailFrame.QualityText:SetText(Utilities.QualityNames[item.quality] or "Unknown")
 
   PlaceDivider()
+  local info = InfoText(item)
+  detailFrame.InfoText:SetText(info)
+  -- No facts: the ID line moves up under the divider
+  detailFrame.ItemIDLabel:SetPoint("TOPLEFT", detailFrame.InfoText, "BOTTOMLEFT", 0, info == "" and 0 or -12)
   detailFrame.ItemIDLabel:SetText("Item ID: " .. item.itemID)
   detailFrame.WowheadBox:SetValue("https://www.wowhead.com/item=" .. item.itemID)
 
@@ -289,6 +354,24 @@ function Search.ShowDetail(item)
   end
 
   RefreshVariants()
+  Search.SelectionChanged()
+end
+
+-- Empties the pane: no item, any pending link load stopped, and the card
+-- with title and text (the default words when none are given)
+function Search.ClearDetail(title, text)
+  if not detailFrame then return end
+  if cancelLinkLoad then
+    local cancel = cancelLinkLoad
+    cancelLinkLoad = nil
+    cancel()
+  end
+  currentItem = nil
+  HideContent(detailFrame)
+  detailFrame.emptyTitle, detailFrame.emptyText = title or EMPTY_TITLE, text or EMPTY_TEXT
+  detailFrame.EmptyCard:Show()
+  detailFrame.EmptyCard:Refresh()
+  Search.SelectionChanged()
 end
 
 -------------------------------------------------------------------------------
@@ -419,7 +502,7 @@ function Search.InitDetailPane(window)
   -- Changes made while the pane was hidden (captures in play, the macro
   -- panel, a closed window) show when it is shown again
   detailFrame:HookScript("OnShow", function() refreshVariants:Call() end)
-  Debug.Log("INIT", "Detail pane initialized (always visible)")
+  Debug.Log("INIT", "Detail pane initialized")
 end
 
 Debug.Log("INIT", "Search detail pane loaded")

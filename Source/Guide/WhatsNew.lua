@@ -16,7 +16,7 @@ CobysLinkepedia.WhatsNew = WhatsNew
 
 local changelog = CobySuite_CobysLinkepedia.UI.CreateWhatsNewWindow({
   name = "CobysLinkepediaChangelogWindow",
-  title = "Coby's Linkepedia: What's New",
+  title = CobysLinkepedia.Utilities.WrapColor(CobysLinkepedia.Utilities.Colors.TEXT_TEAL, "Coby's Linkepedia") .. ": What's New",
   icon = CobysLinkepedia.ICON,
   intro = "What changed in each version of Coby's Linkepedia, newest first. Click a version to open or close it.",
   footer = "Open this window any time with " .. U.WrapColor(U.Colors.HELP_COMMAND, "/lp changelog"),

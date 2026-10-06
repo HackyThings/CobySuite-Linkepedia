@@ -25,6 +25,7 @@ local function InitRow(row, entry, list)
     row:RegisterForClicks("LeftButtonUp", "RightButtonUp")
 
     CobySuite_CobysLinkepedia.UI.AddHoverHighlight(row)
+    row.Selected = Search.AddSelectedMark(row)
 
     row.Icon = row:CreateTexture(nil, "ARTWORK")
     row.Icon:SetSize(ICON_SIZE, ICON_SIZE)
@@ -57,6 +58,8 @@ local function InitRow(row, entry, list)
   end
 
   row.entry = entry
+  -- Only an item's own row is marked; its variant rows are other things
+  row.Selected:SetShown(entry ~= nil and not entry.variant and Search.IsSelected(entry.id))
   if not entry then return end
   local stored = Database.GetItem(entry.id)
   -- An id the database no longer holds still gets a usable row: the detail
@@ -139,6 +142,15 @@ function Search.CreateItemList(parent, opts)
   -- The bar shows only when the rows overflow
   ScrollUtil.AddManagedScrollBarVisibilityBehavior(scrollBox, scrollBar)
   scrollBox:SetDataProvider(CreateIndexRangeDataProvider(0))
+
+  Search.WatchSelection(function()
+    scrollBox:ForEachFrame(function(row)
+      local entry = row.entry
+      if row.Selected then
+        row.Selected:SetShown(entry ~= nil and not entry.variant and Search.IsSelected(entry.id))
+      end
+    end)
+  end)
 
   local retain = ScrollBoxConstants and ScrollBoxConstants.RetainScrollPosition
 

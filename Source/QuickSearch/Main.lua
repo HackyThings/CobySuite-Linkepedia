@@ -1,6 +1,6 @@
 -- Quick Search: a floating search bar (Spotlight style) that puts an item
 -- link into chat. Opens from /lp qs or its key binding; draggable, position
--- saved.
+-- saved. A window like the others (MEDIUM, toplevel), raised when it opens.
 --
 -- Picking a result puts its link into the chat box that was open when the
 -- bar opened, or, with none open, opens chat with the link typed in. An item
@@ -82,6 +82,7 @@ local function CreateRow(parent, index, searchBox)
   row.Name:SetPoint("LEFT", row.Icon, "RIGHT", 6, 0)
   row.Name:SetPoint("RIGHT", -6, 0)
   row.Name:SetJustifyH("LEFT")
+  row.Name:SetWordWrap(false)
 
   row:SetScript("OnClick", function()
     -- A row built for the previous text cannot be picked while a search waits
@@ -166,7 +167,7 @@ local function GetOrCreateFrame()
   solid:SetPoint("TOPLEFT", 8, -8)
   solid:SetPoint("BOTTOMRIGHT", -8, 8)
   solid:SetColorTexture(bg[1], bg[2], bg[3], 1)
-  frame:SetFrameStrata("DIALOG")
+  frame:SetFrameStrata("MEDIUM")
   frame:SetToplevel(true)
   frame:EnableMouse(true)
   frame:SetMovable(true)
@@ -216,6 +217,14 @@ local function GetOrCreateFrame()
     resultRows[i]:Hide()
   end
 
+  -- What an empty answer means, in the first row's place
+  frame.EmptyText = frame:CreateFontString(nil, "OVERLAY", Utilities.Fonts.DATA)
+  frame.EmptyText:SetPoint("TOPLEFT", searchBox, "BOTTOMLEFT", -4, -ROW_GAP - 4)
+  frame.EmptyText:SetPoint("RIGHT", frame, "RIGHT", -12, 0)
+  frame.EmptyText:SetJustifyH("LEFT")
+  frame.EmptyText:SetTextColor(unpack(Utilities.Colors.LABEL_GRAY))
+  frame.EmptyText:Hide()
+
   SetRowCount(0)
   RestorePosition()
   return frame
@@ -224,12 +233,22 @@ end
 -------------------------------------------------------------------------------
 -- Search
 -------------------------------------------------------------------------------
-local function ShowResults(results)
+-- query: the text the results answer (nil or blank for a cleared box,
+-- which shows nothing under it)
+local function ShowResults(results, query)
   currentResults = results
   selectedIndex = #currentResults > 0 and 1 or 0
 
   local numVisible = math.min(#currentResults, MAX_RESULTS)
-  SetRowCount(numVisible)
+  local empty
+  if numVisible == 0 and query and strtrim(query) ~= "" then
+    empty = Database.GetCount() == 0 and "Build your item database first: /lp build."
+      or "No matching items. Try a shorter name."
+  end
+  frame.EmptyText:SetText(empty or "")
+  frame.EmptyText:SetShown(empty ~= nil)
+  SetRowCount(empty and 1 or numVisible)
+  local hints = Search.DuplicateHints(currentResults)
 
   for i = 1, MAX_RESULTS do
     local row = resultRows[i]
@@ -240,7 +259,7 @@ local function ShowResults(results)
       local _, _, _, _, icon = C_Item.GetItemInfoInstant(item.itemID)
       row.Icon:SetTexture(icon or "Interface\\Icons\\INV_Misc_QuestionMark")
 
-      row.Name:SetText(item.name)
+      row.Name:SetText(Search.NameWithHint(item.name, hints[i]))
       local qualityColor = ITEM_QUALITY_COLORS[item.quality or 1]
       if qualityColor then row.Name:SetTextColor(qualityColor.r, qualityColor.g, qualityColor.b) end
 
@@ -277,7 +296,7 @@ DoSearch = function(query)
   local cancel = Database.SearchAsync(query, MAX_RESULTS, nil, function(results)
     finished = true
     cancelSearch, searchQuery = nil, nil
-    ShowResults(results)
+    ShowResults(results, query)
   end)
   if not finished then cancelSearch, searchQuery = cancel, query end
 end
@@ -287,7 +306,7 @@ FinishSearch = function()
   if not cancelSearch then return end
   local query = searchQuery
   StopSearch()
-  ShowResults(Database.Search(query, MAX_RESULTS))
+  ShowResults(Database.Search(query, MAX_RESULTS), query)
 end
 
 -------------------------------------------------------------------------------
@@ -319,12 +338,14 @@ function QuickSearch.Show()
   targetEditBox = (active and active:IsShown()) and active or nil
 
   f:Show()
+  f:Raise()
   f.SearchBox:SetText("")
   f.SearchBox:SetFocus()
   StopSearch()
   currentResults = {}
   selectedIndex = 0
   for _, row in ipairs(resultRows) do row:Hide() end
+  f.EmptyText:Hide()
   SetRowCount(0)
   Debug.Log("UI", "Quick search opened")
 end

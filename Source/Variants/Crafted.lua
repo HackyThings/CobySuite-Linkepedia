@@ -5,7 +5,7 @@
 -- returns the link the crafting-orders form previews, for any recipe the
 -- client knows, learned or not, with no profession window open, and with
 -- reagents the player does not own. Measured in the 12.1.0 client
--- (Variant-Builder-Lab.md, D2 to D4 and D7):
+-- (the Variant Builder lab notes, D2 to D4 and D7):
 --   - each quality ID gives its own link and item level;
 --   - Modifying slots (missives, embellishments, sparks, crests, PvP
 --     heraldry) change the item, so each is offered with all its reagents;
@@ -16,7 +16,7 @@
 --   - the link carries its quality, and each Modifying reagent as a modifier
 --     whose value is the reagent's item ID.
 -- A built link is offered only when it reads back the chosen quality and
--- carries every chosen reagent. Only C_TradeSkillUI getters are called.
+-- carries every chosen reagent. Only C_TradeSkillUI and C_Item calls are made.
 
 local Variants = CobysLinkepedia.Variants
 local Database = CobysLinkepedia.Database

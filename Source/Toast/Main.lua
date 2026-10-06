@@ -25,14 +25,13 @@ local toast = CobySuite_CobysLinkepedia.UI.NewToast({
   isEnabled = function()
     return showingSample or Config.Get(Config.Options.CAPTURE_TOAST_ENABLED)
   end,
-  position = function(t, index, height, gap)
-    local yOffset = (index - 1) * (height + gap)
-    t:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", -200, 100 + yOffset)
+  position = function(t, index, height, gap, offset)
+    t:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", -200, 100 + offset)
   end,
 })
 
--- Returns the notice's frame, or nil when none went up (turned off,
--- waiting while suspended, or sent to chat)
+-- Returns the notice's frame, or nil when none went up (notices off, or it
+-- waits for combat to end)
 function Toast.Show(title, message, icon)
   return toast.Show({
     title = title or "Coby's Linkepedia",
@@ -56,7 +55,6 @@ function Toast.DismissAll()
 end
 
 ---------------------------------------------------------------------------
--- Listen for ItemCaptured events
 ---------------------------------------------------------------------------
 local listener = { ReceiveEvent = function(_, _, itemID, itemName)
   local _, _, _, _, icon = C_Item.GetItemInfoInstant(itemID)

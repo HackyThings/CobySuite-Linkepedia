@@ -33,7 +33,7 @@ Upgrading from Linkepedia 1.5.0? Delete the old `Linkepedia` folder; the new add
 /lp guide - Open or close the feature guide
 /lp changelog - Open or close the changelog: what changed in each version
 /lp debug - Open or close the debug log window
-/lp build - Rebuild the item database from scratch (asks first)
+/lp build - Build the item database from scratch (asks first when it already has items)
 /lp expand - Add the items the database lacks, or finish a stopped scan
 /lp pause - Pause the running scan
 /lp resume - Resume a paused scan
@@ -42,7 +42,7 @@ Upgrading from Linkepedia 1.5.0? Delete the old `Linkepedia` folder; the new add
 /lp status - Open or close the live database and scan status window
 /lp stats - Open or close the live performance stats window
 /lp set <key> <value> - Change a setting by key; alone, lists every key and value
-/lp reset - Delete the item database (asks first); settings and favorites stay
+/lp reset - Delete the item database (asks first); settings, favorites, history and saved variants stay
 /lp recipes [cancel] - Index the recipes the Variant Builder uses; cancel stops it
 /lp variant [itemID] - Open the Variant Builder, optionally on an item ID
 /lp findmax [cancel] - Find the highest item ID the game knows; cancel stops it

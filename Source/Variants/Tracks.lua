@@ -11,7 +11,7 @@
 -- season's tracks, so a past season's link is confirmed by keeping its bonus
 -- ID and having an item level, and its track comes from TrackData (marked
 -- fromData, with no highest rank). Measured in the 12.1.0 client
--- (Variant-Builder-Lab.md, D5 and D6): every Midnight Season 2 track and rank
+-- (the Variant Builder lab notes, D5 and D6): every Midnight Season 2 track and rank
 -- read back right, and a whisper carried the built link intact. The client
 -- accepts any track on any gear (a PvP cloak took them all), so whether an
 -- item really drops on a track is the player's call.
@@ -22,7 +22,7 @@
 -- highest quality the bonuses ask for, so a quality below the rank's own
 -- never lands: Myth 6 stayed Epic for Common, Uncommon and Rare, in either
 -- bonus order, and took Legendary, Artifact and Heirloom (in the client
--- 2026-09-17, Variant-Builder-Lab.md D9).
+-- 2026-09-17, the Variant Builder lab notes D9).
 
 local Variants = CobysLinkepedia.Variants
 local Utilities = CobysLinkepedia.Utilities
@@ -247,7 +247,8 @@ end
 
 -- Builds itemID's link on a season's track at rank and calls onDone(result):
 -- { link, ilvl, track, quality } when the client read back that track and
--- rank, and the quality asked for, else { error, detail }. Returns cancel.
+-- rank, and the quality asked for, else { error, detail } (a refusal of the
+-- track itself also carries the link the game built). Returns cancel.
 -- quality (optional, a key of QUALITY_BONUS) replaces the rank's own: the
 -- plain track link is built first and is the result when it already has that
 -- quality; otherwise the quality bonus goes after the track bonus, then

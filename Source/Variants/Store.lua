@@ -15,13 +15,13 @@
 --   key       Database.VariantKeyForLink(link); one record per key
 --   source    "built" (the builder) or "captured" (kept from play)
 --   kind      "crafted", "track" or "other"
---   ilvl, rank, track ({ text, level, max })   read from the link when saved
+--   ilvl, rank, track ({ text, level, max, stringID, seasonKey, seasonName,
+--             name, fromData })   read from the link when saved
 --   choices   what the builder chose, to open it again: crafted
 --             { recipeID, quality, reagents = { [dataSlotIndex] = itemID } },
 --             track { season, track = name, rank, itemQuality } (itemQuality
 --             an Enum.ItemQuality in place of the rank's own, or nil)
 --   favorite  true when it shows in the Favorites tab
---   created   time()
 --
 -- Every change fires SavedVariantsChanged(id, itemID, change) with change
 -- "saved", "updated", "deleted" or "favorite".
@@ -150,7 +150,6 @@ function Variants.ValidateSaved()
       if type(v.rank) ~= "number" then v.rank = nil end
       if type(v.track) ~= "table" then v.track = nil end
       if type(v.choices) ~= "table" then v.choices = nil end
-      if type(v.created) ~= "number" then v.created = 0 end
     end
   end
 
@@ -192,7 +191,7 @@ function Variants.Save(link, meta)
 
   local id = saved.nextID
   saved.nextID = id + 1
-  local v = { id = id, itemID = parsed.itemID, link = link, key = key, source = "built", created = time() }
+  local v = { id = id, itemID = parsed.itemID, link = link, key = key, source = "built" }
   ApplyMeta(v, meta)
   saved.byID[id] = v
   IndexAdd(v)

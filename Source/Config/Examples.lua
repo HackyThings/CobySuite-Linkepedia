@@ -8,8 +8,8 @@
 -- Its first four characters, cut on UTF-8 boundaries, are both the
 -- autocomplete draft and the ${n=} token.
 --
--- This file loads before the modules it reads (Database, Scanner, Linkify,
--- Variants, Toast), so it reaches them only inside functions, which run
+-- This file loads before the modules it reads (Database, Scanner, Search,
+-- Linkify, Variants, Toast), so it reaches them only inside functions, which run
 -- once the window is shown.
 
 local Config = CobysLinkepedia.Config
@@ -83,13 +83,15 @@ end
 -- hidden, is dropped.
 
 local function SetRows(box, results, shown)
+  -- The same grey hint the real list gives two items of one name
+  local hints = results and CobysLinkepedia.Search.DuplicateHints(results) or {}
   for i, row in ipairs(box.Rows) do
     local item = results and i <= shown and results[i]
     row:SetShown(item and true or false)
     if item then
       local icon = select(5, C_Item.GetItemInfoInstant(item.itemID))
       row.Icon:SetTexture(icon or QUESTION_MARK)
-      row.Name:SetText(item.name or "")
+      row.Name:SetText(CobysLinkepedia.Search.NameWithHint(item.name, hints[i]))
       local color = ITEM_QUALITY_COLORS[item.quality or 1]
       if color then row.Name:SetTextColor(color.r, color.g, color.b) end
     end
@@ -198,9 +200,9 @@ function Examples.BuildAutocomplete(box, window)
   box.Message:Hide()
 
   box.BuildButton = Utilities.CreateButton(box, {
-    text = "Build database", size = { 150, 22 },
+    text = "Build Database", size = { 150, 22 },
     point = { "TOPLEFT", box.Message, "BOTTOMLEFT", 0, -10 },
-    tooltip = "Build your item database now. It runs in the background for a few minutes and pauses by itself in combat. Shift-click for a faster scan, Ctrl+Shift-click for the fastest.",
+    tooltip = "Build your item database. It runs in the background and pauses in combat. Shift-click for a faster scan, Ctrl+Shift-click for the fastest. Both can stutter.",
     onClick = function()
       Examples.StartBuild()
       Examples.PaintAutocomplete(box, window)   -- the building message at once
@@ -228,12 +230,16 @@ function Examples.LinkByNameText(window)
   end
   local typed = "Anyone have [" .. item.name .. "]?"
   local sent = typed
+  -- What the line really became, said in words: a Common item's link is as
+  -- white as the text around it
+  local result = Grey("(plain text)")
   if window:Get(Opt.AUTO_LINKIFY_ON_SEND) then
     -- The client links an item it has loaded; ask, so the next repaint can
     C_Item.RequestLoadItemDataByID(item.itemID)
     sent = CobysLinkepedia.Linkify.TransformMessage(typed)
+    result = Grey(sent:find("|Hitem:", 1, true) and "(item link)" or "(not linked yet)")
   end
-  return Grey("You type:") .. "  " .. typed .. "\n" .. Grey("Others see:") .. "  " .. sent
+  return Grey("You type:") .. "  " .. typed .. "\n" .. Grey("Others see:") .. "  " .. sent .. "  " .. result
 end
 
 function Examples.TokensText(window)
@@ -261,13 +267,13 @@ end
 
 -------------------------------------------------------------------------------
 -- Chat messages: a line of each level, the ones the staged level would not
--- print greyed and marked
+-- print greyed (the preview's description says what grey means)
 -------------------------------------------------------------------------------
 local LEVEL_RANK = { Quiet = 0, Normal = 1, Verbose = 2 }
 local SAMPLE_LINES = {
   { rank = 0, color = Utilities.Colors.TEXT_GOLD, text = "A scan is already in progress." },
-  { rank = 1, color = Utilities.Colors.TEXT_GREEN, text = "Scan complete! Found 1204 items in 3m 12s." },
-  { rank = 2, text = "Found 9870 valid item IDs (max ID: 260000). Querying..." },
+  { rank = 1, color = Utilities.Colors.TEXT_GREEN, text = "Scan complete! Found 1,204 items in 3m 12s." },
+  { rank = 2, text = "Found 9,870 valid item IDs (max ID: 260000). Querying..." },
 }
 
 function Examples.MessagesText(window)
@@ -279,7 +285,7 @@ function Examples.MessagesText(window)
       local body = line.color and ("|cff" .. line.color .. line.text .. "|r") or line.text
       lines[i] = "|cff" .. Utilities.Colors.TEXT_TEAL .. prefix .. "|r " .. body
     else
-      lines[i] = Grey(prefix .. " " .. line.text .. " (hidden)")
+      lines[i] = Grey(prefix .. " " .. line.text)
     end
   end
   return table.concat(lines, "\n")
@@ -299,8 +305,6 @@ end
 -- apply the window's staged settings: a scan runs at the saved speed
 function Examples.StartBuild() CobysLinkepedia.Scanner.StartBuild(false, Intensity()) end
 function Examples.StartExpand() CobysLinkepedia.Scanner.StartExpand(Intensity()) end
-function Examples.Scanning() return Scanning() end
-function Examples.ItemCount() return ItemCount() end
 
 local SPEEDS = "Runs at your saved scan speed; Shift-click for a faster scan, Ctrl+Shift-click for the fastest."
 
@@ -313,22 +317,22 @@ function Examples.DatabaseActions()
     {
       text = function()
         if Scanning() then return "Scanning..." end
-        return ItemCount() > 0 and "Expand database" or "Build database"
+        return ItemCount() > 0 and "Expand Database" or "Build Database"
       end,
       enabled = function() return not Scanning() end,
       tooltip = function()
         if Scanning() then return "A scan is running. The status window shows how far it has got." end
         if ItemCount() > 0 then
-          return "Add only the items your database lacks, such as a new patch's. Much quicker than a rebuild. " .. SPEEDS
+          return "Add missing items without starting over, including items from a new patch or an unfinished scan. " .. SPEEDS
         end
-        return "Build your item database. It runs in the background for a few minutes and pauses by itself in combat. " .. SPEEDS
+        return "Build your item database. It runs in the background and pauses in combat. " .. SPEEDS
       end,
       onClick = function()
         if ItemCount() > 0 then Examples.StartExpand() else Examples.StartBuild() end
       end,
     },
     {
-      text = "Rebuild...",
+      text = "Rebuild Database...",
       enabled = function() return ItemCount() > 0 and not Scanning() end,
       tooltip = "Start over and build your item database from scratch. Asks first.",
       onClick = function() Examples.StartBuild() end,
@@ -359,7 +363,8 @@ local function IdleText()
 end
 
 -- The card's state (a StatusCard state: "ok", "warn" or "unknown"), its
--- word, a title and a line about it, then the idle scan's line. Reads only
+-- word, a title and a line about it (the Incomplete and Ready lines end with
+-- the idle scan's line). Reads only
 -- kept counters and fields, so the card can ask every half second.
 function Examples.DatabaseState()
   local Scanner = CobysLinkepedia.Scanner

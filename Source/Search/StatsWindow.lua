@@ -1,5 +1,4 @@
 -- Stats Window: a movable window of live performance metrics (/lp stats)
--- Adapted from CobySniper's Monitor StatsTab pattern.
 
 local Search = CobysLinkepedia.Search
 local Utilities = CobysLinkepedia.Utilities
@@ -111,7 +110,7 @@ local METRICS = {
   {
     label = "Database Items",
     getValue = function()
-      local count = CobysLinkepedia.Database.GetCount and CobysLinkepedia.Database.GetCount() or 0
+      local count = CobysLinkepedia.Database.GetCount()
       return BreakUpLargeNumbers(count)
     end,
     tooltip = "Total items stored in the item database",
@@ -136,7 +135,7 @@ local METRICS = {
   {
     label = "Scan Active",
     getValue = function()
-      local status = CobysLinkepedia.Scanner.GetStatus and CobysLinkepedia.Scanner.GetStatus()
+      local status = CobysLinkepedia.Scanner.GetStatus()
       if status and status.isActive then
         return GreenGray(true, "Yes") .. "  (" .. (status.scanMode or "?") .. ")"
       end
@@ -147,10 +146,10 @@ local METRICS = {
   {
     label = "Debug Buffer",
     getValue = function()
-      local size = CobysLinkepedia.Debug.GetBufferSize and CobysLinkepedia.Debug.GetBufferSize() or 0
+      local size = CobysLinkepedia.Debug.GetBufferSize()
       return string.format("%d / 5000", size)
     end,
-    tooltip = "Debug log entries in the ring buffer",
+    tooltip = "Entries held in the debug log",
   },
   {
     label = "Loaded Addons",
@@ -196,7 +195,6 @@ local function CreateStatsWindow()
 
   f._memTimer = 0
 
-  -- the shared metric rows (CobySuite.UI.CreateMetricList)
   f._metricList = CobySuite_CobysLinkepedia.UI.CreateMetricList(f, METRICS, {
     labelWidth = LABEL_W, padding = PAD, top = 28, errorText = Utilities.WrapColor(Utilities.Colors.WARNING_RED, "error"),
   })

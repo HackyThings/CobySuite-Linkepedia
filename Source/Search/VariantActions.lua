@@ -3,7 +3,7 @@
 -- for the Variant Builder.
 --
 -- A variant entry is { id = itemID, variant = { link, savedID, favorite,
--- rank, ilvl, track, kind, source } }: a saved variant (Variants/Store.lua)
+-- rank, ilvl, track, source } }: a saved variant (Variants/Store.lua)
 -- carries its savedID; a captured one (Database.GetVariants) has none until
 -- it is saved. Clicks match the item rows: click opens it in the Variant
 -- Builder, Shift-click links it, Ctrl-click opens the dressing room,
@@ -44,7 +44,7 @@ end
 
 -- The item quality (Enum.ItemQuality) a variant shows, which can differ from
 -- its base item's: an upgrade-track rank or a crafted quality moves it. Read
--- from the link's colour code, else the client.
+-- from the link's colour code, else the client, else the base item's quality.
 function Search.VariantQuality(variant, itemID)
   local link = variant.link
   local quality = type(link) == "string" and tonumber(link:match("|cnIQ(%d+)"))
@@ -123,7 +123,7 @@ local function SavedEntry(v)
     id = v.itemID,
     variant = {
       link = v.link, savedID = v.id, favorite = v.favorite, rank = v.rank, ilvl = v.ilvl,
-      track = v.track, kind = v.kind, source = v.source,
+      track = v.track, source = v.source,
     },
   }
 end
@@ -143,7 +143,7 @@ function Search.VariantEntriesForItem(itemID)
         id = itemID,
         variant = {
           link = captured.link, rank = captured.rank, ilvl = captured.ilvl,
-          track = info and info.track, kind = info and info.kind, source = "captured",
+          track = info and info.track, source = "captured",
         },
       }
     end
@@ -262,7 +262,7 @@ function Search.ShowVariantMenu(anchor, entry)
     end
 
     root:CreateDivider()
-    root:CreateButton("Link in chat", function() LinkToChat(entry) end)
+    root:CreateButton("Link in Chat", function() LinkToChat(entry) end)
     -- The token needs a saved variant, so sending it saves one. Macros get it
     -- from the builder's Add to Macro, a click the macro window allows.
     root:CreateButton("Send variant token to chat", function()

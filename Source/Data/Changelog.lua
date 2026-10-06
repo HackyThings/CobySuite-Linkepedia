@@ -15,6 +15,31 @@
 -------------------------------------------------------------------------------
 CobysLinkepedia.Data.Changelog = {
   {
+    version = "2.0.4",
+    title = "A richer detail pane and helpful searches",
+    date = "2026-10-06",
+    new = {
+      "Detail pane: Link in Chat, plus type, item level and expansion",
+      "Lists mark the item in the detail pane; the footer counts results",
+      "Same-name suggestions show item level and type",
+      "No results: a hint suggests what to try next",
+      "Double-click a column edge to fit it",
+    },
+    changed = {
+      "Scan panel: one row while no scan runs",
+      "History: dates for items linked before today",
+      "Quick Search: opens in front of other windows",
+      "Debug: the button left the window; {/lp debug} still opens it",
+      "Settings: Cancel is now Undo edits",
+      "Many smaller look and wording improvements",
+    },
+    fixed = {
+      "Loading overlay no longer draws over other windows",
+      "Long item names stop at two lines",
+      "Several smaller bug fixes",
+    },
+  },
+  {
     version = "2.0.3",
     title = "Redesigned settings and stats",
     date = "2026-10-01",

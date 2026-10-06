@@ -33,14 +33,12 @@ function Search.AddToHistory(itemID)
       end
     end
 
-    -- Insert at top (most recent first)
     table.insert(history, 1, {
       id = itemID,
       timestamp = time(),
     })
   end
 
-  -- Cap at the limit
   while #history > limit do
     table.remove(history)
   end
@@ -63,6 +61,18 @@ end
 -- the detail pane. Rows use the explorer's shared click actions.
 -------------------------------------------------------------------------------
 do
+  -- When an item was linked: the clock time today, the day and month earlier
+  -- this year, with the year before that. Compared by calendar day, not by
+  -- 24-hour spans.
+  local function LinkedWhen(timestamp)
+    if type(timestamp) ~= "number" then return "" end
+    local now = date("*t")
+    local t = date("*t", timestamp)
+    if t.year == now.year and t.yday == now.yday then return date("%H:%M", timestamp) end
+    if t.year == now.year then return date("%d %b", timestamp) end
+    return date("%d %b %Y", timestamp)
+  end
+
   -- Deferred init: the window's own OnLoad runs a frame after load
   local function InitHistoryTab()
     if Search._historyFrame then return end
@@ -88,7 +98,7 @@ do
     local list = Search.CreateItemList(f, {
       top = -30,
       rightText = function(entry)
-        return entry.timestamp and date("%H:%M", entry.timestamp) or ""
+        return LinkedWhen(entry.timestamp)
       end,
     })
 

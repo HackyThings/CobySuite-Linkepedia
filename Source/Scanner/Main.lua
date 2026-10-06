@@ -84,10 +84,7 @@ local prePauseState = nil
 local held = false
 local heldScan = false
 
--- Deadline for the three wait states, checked by OnUpdate. These used to be
--- driven by one-shot C_Timer callbacks guarded on `state`; a pause (combat or
--- manual) overwrote `state` first, so the callback no-oped, the timer was
--- consumed, and the scan sat in the wait state forever once resumed.
+-- Deadline for the three wait states, checked by OnUpdate (see WaitOver).
 local waitUntil = nil
 local startTime = 0
 local itemsFound = 0
@@ -501,7 +498,7 @@ local function EndQuery()
     Debug.State("SCAN", "Query done: %d items found, %d missed. Waiting %ds before refine...",
       itemsFound, #queryFailedIDs, REFINE_WAIT_DURATION)
     CobysLinkepedia.Utilities.Message(string.format(
-      "Refining: waiting %ds for %d remaining items...", REFINE_WAIT_DURATION, #queryFailedIDs), "normal")
+      "Refining: waiting %ds for %s remaining items...", REFINE_WAIT_DURATION, BreakUpLargeNumbers(#queryFailedIDs)), "normal")
     waitUntil = Now() + REFINE_WAIT_DURATION
   else
     state = STATE_COMPLETE
@@ -581,9 +578,9 @@ local function StepDiscover()
 
     local Msg = CobysLinkepedia.Utilities.Message
     if expandKnownIDs then
-      Msg(string.format("Found %d new item IDs to query (max ID: %d)...", validCount, discoverMaxFound), "verbose")
+      Msg(string.format("Found %s new item IDs to query (max ID: %d)...", BreakUpLargeNumbers(validCount), discoverMaxFound), "verbose")
     else
-      Msg(string.format("Found %d valid item IDs (max ID: %d). Querying...", validCount, discoverMaxFound), "verbose")
+      Msg(string.format("Found %s valid item IDs (max ID: %d). Querying...", BreakUpLargeNumbers(validCount), discoverMaxFound), "verbose")
     end
 
     state = STATE_QUERY
@@ -812,8 +809,8 @@ local function StepComplete()
   Debug.State("SCAN", "Scan counts (%s): %d queried, %d stored, %d dead (%d unanswered for the second scan running), %d deferred to the idle queue, %d over the %d cap (asked again by the next scan)",
     scanMode or "?", queried, itemsFound, deadThisScan, silentTwice, deferred, dropped, pendingCap)
   CobysLinkepedia.Utilities.Message(string.format(
-    "Checked %d item IDs: %d stored, %d skipped, %d waiting for idle retry, %d left for the next scan.",
-    queried, itemsFound, deadThisScan, deferred, dropped), "verbose")
+    "Checked %s item IDs: %s stored, %s skipped, %s waiting for idle retry, %s left for the next scan.",
+    BreakUpLargeNumbers(queried), BreakUpLargeNumbers(itemsFound), BreakUpLargeNumbers(deadThisScan), BreakUpLargeNumbers(deferred), BreakUpLargeNumbers(dropped)), "verbose")
 
   ReleaseScanTables()
 
@@ -821,7 +818,7 @@ local function StepComplete()
   CobysLinkepedia.EventBus:Fire(CobysLinkepedia.Events.ScanComplete, itemsFound)
   CobysLinkepedia.EventBus:Fire(CobysLinkepedia.Events.DatabaseUpdated)
 
-  CobysLinkepedia.Utilities.Message.Success(string.format("Scan complete! Found %d items in %dm %ds.", itemsFound, minutes, seconds), "normal")
+  CobysLinkepedia.Utilities.Message.Success(string.format("Scan complete! Found %s items in %dm %ds.", BreakUpLargeNumbers(itemsFound), minutes, seconds), "normal")
 end
 
 local STEPS = {
@@ -1014,7 +1011,7 @@ local function StartExpandScan(intensity)
   Debug.State("SCAN", "Expand scan started (%s): %d stored and %d dead skipped, discovering new IDs...",
     scanIntensity or "normal", skipCount, deadCount)
   CobysLinkepedia.Utilities.Message(string.format(
-    "Finding missing items (skipping %d stored and %d previously refused or unanswered IDs)...", skipCount, deadCount), "normal")
+    "Finding missing items (skipping %s stored and %s previously refused or unanswered IDs)...", BreakUpLargeNumbers(skipCount), BreakUpLargeNumbers(deadCount)), "normal")
 end
 
 -- intensity: nil (Scan speed setting), "Boost" or "Max"; see INTENSITY_CAPS
@@ -1045,7 +1042,7 @@ function Scanner.Resume()
     return
   end
   if pausedInCombat then
-    CobysLinkepedia.Utilities.Message.Warn("Cannot resume during combat.")
+    CobysLinkepedia.Utilities.Message.Warn("Can't resume during combat.")
     return
   end
   state = prePauseState or STATE_DISCOVER
@@ -1126,7 +1123,7 @@ function Scanner.GetStatus()
 end
 
 -- The last scan as scanState records it: its mode ("build" or "expand", or
--- nil in a database saved before modes were kept), whether it ran to its
+-- nil when no scan has been started), whether it ran to its
 -- end, when the last one that did finished, and where an unfinished one stopped
 function Scanner.GetLastScan()
   local s = COBYS_LINKEPEDIA_DB and COBYS_LINKEPEDIA_DB.scanState
@@ -1389,7 +1386,7 @@ function Scanner.ReconcileIdle()
 end
 
 -- The ticker follows its enabled option; the speed is read at every tick. A
--- nil key (Defaults, a restored snapshot) re-reads the option.
+-- nil key (the config was reset at load, a restored snapshot) re-reads the option.
 CobysLinkepedia.EventBus:Register({ ReceiveEvent = function(_, _, key)
   if key == nil or key == Config.Options.IDLE_SCAN_ENABLED then
     Scanner.ReconcileIdle()

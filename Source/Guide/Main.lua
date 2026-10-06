@@ -3,7 +3,7 @@
 -- (alias tutorial), the search window's "?" and the settings window's Guide
 -- button open it, and a fresh install opens it at its first section
 -- (Guide/WhatsNew.lua), the item database, whose Build Database button
--- starts the first build (it replaced the old welcome window). Built at
+-- starts the first build. Built at
 -- load, like the search window, so opening it in combat creates nothing.
 
 local Guide = CobysLinkepedia.Guide
@@ -41,7 +41,7 @@ end
 -- Expand: only the IDs the database lacks, once there is a database to add to
 local EXPAND_BUTTON = {
   text = "Expand Database", width = 150,
-  tooltip = "Scan only the item IDs your database doesn't have yet: a new patch's items, or the rest of a scan that was canceled. Much faster than a rebuild.",
+  tooltip = "Add missing items without starting over, including items from a new patch or an unfinished scan.",
   label = function() return Scanning() and "Scanning..." or "Expand Database" end,
   enabled = function() return HasItems() and not Scanning() end,
   onClick = function()
@@ -67,7 +67,7 @@ Guide.SECTIONS = {
     buttons = {
       {
         text = "Build Database", width = 150,
-        tooltip = "Build your item database now. It runs in the background for a few minutes and pauses by itself in combat.",
+        tooltip = "Build your item database from scratch. Rebuilding an existing database asks first. Scans pause in combat.",
         label = BuildLabel,
         enabled = function() return not Scanning() end,
         onClick = function()
@@ -90,7 +90,7 @@ Guide.SECTIONS = {
     icon = ICONS .. "INV_Misc_PocketWatch_01",
     summary = "Held-back items and variants arrive by themselves; Expand adds new ones",
     body = T.Bullets({
-      "The idle scan asks the server again for items a build held back, five a second, never in combat.",
+      "The idle scan retries items a scan could not load and pauses in combat. Set its speed in Settings > Item database.",
       "Variants, such as crafted ranks, are captured as you play: bags, worn gear, loot, trades, mail and links others post.",
       "After a game patch, a dialog offers " .. T.Key("Expand") .. ", so new items arrive without an addon update.",
       "IDs the server refuses, or never answers in two scans, are skipped until the next patch.",
@@ -108,7 +108,7 @@ Guide.SECTIONS = {
     body = T.Bullets({
       "In any chat box, type " .. T.Key("[") .. " and the start of an item's name. A list of matches opens.",
       T.Key("Up") .. " and " .. T.Key("Down") .. " move through it. " .. T.Key("Tab") .. " or a click puts the link where you typed.",
-      T.Key("Enter") .. " still sends your message, and " .. T.Key("Escape") .. " closes the list.",
+      T.Key("Enter") .. " sends your message as always. " .. T.Key("Escape") .. " closes the list and the chat box, and clears what you typed.",
       "It works mid-message too: the text after it stays put.",
     }),
     try = {
@@ -198,7 +198,7 @@ Guide.SECTIONS = {
     summary = "The settings window, key bindings and every command",
     body = T.Bullets({
       "Five pages: Autocomplete, Linking, Item database, Search window, and Minimap and chat.",
-      "Examples show what a choice does. Changes wait for " .. T.Key("Apply") .. "; " .. T.Key("Cancel") .. " drops them, " .. T.Key("Defaults") .. " restores every setting.",
+      "Examples show what a choice does. Changes wait for " .. T.Key("Apply") .. "; " .. T.Key("Undo edits") .. " drops them, " .. T.Key("Defaults") .. " restores every setting.",
       "Right-click the minimap button to open it too.",
       "Set keys under Options > Keybindings > AddOns: Toggle Search Window and Toggle Quick Search.",
     }),
@@ -213,7 +213,7 @@ Guide.SECTIONS = {
 
 local window = CobySuite_CobysLinkepedia.UI.CreateGuideWindow({
   name = "CobysLinkepediaGuideWindow",
-  title = "Coby's Linkepedia Guide",
+  title = CobysLinkepedia.Utilities.WrapColor(CobysLinkepedia.Utilities.Colors.TEXT_TEAL, "Coby's Linkepedia") .. " Guide",
   icon = CobysLinkepedia.ICON,
   intro = "New here? Start with the first section. Click any heading to open or close it.",
   footer = "Open this guide any time with " .. U.WrapColor(U.Colors.HELP_COMMAND, "/lp guide"),

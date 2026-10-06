@@ -30,16 +30,13 @@ local function CreateRow(parent, index)
   row:SetPoint("TOPLEFT", 4, -(index - 1) * ROW_HEIGHT - 4)
   row:SetPoint("TOPRIGHT", -4, -(index - 1) * ROW_HEIGHT - 4)
 
-  -- Highlight texture
   CobySuite_CobysLinkepedia.UI.AddHoverHighlight(row, { 1, 1, 1, 0.1 })
 
-  -- Selection texture
   row.Selection = row:CreateTexture(nil, "BACKGROUND")
   row.Selection:SetAllPoints()
   row.Selection:SetColorTexture(0.3, 0.6, 1, 0.2)
   row.Selection:Hide()
 
-  -- Icon
   row.Icon = row:CreateTexture(nil, "ARTWORK")
   row.Icon:SetSize(ICON_SIZE, ICON_SIZE)
   row.Icon:SetPoint("LEFT", 4, 0)
@@ -49,13 +46,12 @@ local function CreateRow(parent, index)
   row.VariantText:SetPoint("RIGHT", -6, 0)
   row.VariantText:SetTextColor(unpack(Utilities.Colors.LABEL_GRAY))
 
-  -- Item name
   row.Name = row:CreateFontString(nil, "OVERLAY", Utilities.Fonts.DATA)
   row.Name:SetPoint("LEFT", row.Icon, "RIGHT", 6, 0)
   row.Name:SetPoint("RIGHT", row.VariantText, "LEFT", -6, 0)
   row.Name:SetJustifyH("LEFT")
+  row.Name:SetWordWrap(false)
 
-  -- Substring indicator (dimmed)
   row.SubstringDivider = row:CreateTexture(nil, "ARTWORK")
   row.SubstringDivider:SetHeight(1)
   row.SubstringDivider:SetPoint("TOPLEFT", 0, 0)
@@ -63,7 +59,6 @@ local function CreateRow(parent, index)
   row.SubstringDivider:SetColorTexture(0.4, 0.4, 0.4, 0.3)
   row.SubstringDivider:Hide()
 
-  -- Click handler
   row:SetScript("OnClick", function()
     if row.itemData then
       Autocomplete.SelectItem(row.itemData, displayedRevision)
@@ -178,15 +173,15 @@ local function GetOrCreateDropdown()
     end
   end)
 
-  -- Create row pool
   for i = 1, MAX_VISIBLE_ROWS do
     rows[i] = CreateRow(dropdown, i)
   end
 
   -- The list owns its visibility. A click anywhere outside it and outside
   -- the chat boxes hides it (the shared helper, the way Blizzard menus
-  -- close), and hiding it for any reason ends the autocomplete session, so
-  -- no session outlives a list the player can no longer see.
+  -- close), and hiding it ends the autocomplete session unless
+  -- HideDropdown(true) keeps it for a refresh, so a session outlives a hidden
+  -- list only while its search for the changed text runs or found nothing.
   for i = 1, Constants.ChatFrameConstants.MaxChatWindows do
     Autocomplete.AddDropdownOwner(_G["ChatFrame" .. i .. "EditBox"])
   end
@@ -259,7 +254,8 @@ function Autocomplete.ShowDropdown(editBox, results, revision)
   -- Track first substring result for divider
   local firstSubstringIdx = nil
 
-  -- Populate rows
+  -- Populate rows; two items of one name each get a grey hint
+  local hints = CobysLinkepedia.Search.DuplicateHints(results)
   for i = 1, MAX_VISIBLE_ROWS do
     local row = rows[i]
     if i <= #results then
@@ -270,9 +266,8 @@ function Autocomplete.ShowDropdown(editBox, results, revision)
       local icon = select(5, C_Item.GetItemInfoInstant(item.itemID))
       row.Icon:SetTexture(icon or "Interface\\Icons\\INV_Misc_QuestionMark")
 
-      -- Name colored by quality
       local qualityColor = ITEM_QUALITY_COLORS[item.quality or 1]
-      row.Name:SetText(item.name)
+      row.Name:SetText(CobysLinkepedia.Search.NameWithHint(item.name, hints[i]))
       if qualityColor then
         row.Name:SetTextColor(qualityColor.r, qualityColor.g, qualityColor.b)
       end
@@ -287,7 +282,6 @@ function Autocomplete.ShowDropdown(editBox, results, revision)
         row.VariantText:SetText("")
       end
 
-      -- Substring divider
       if item.isSubstring and not firstSubstringIdx then
         firstSubstringIdx = i
         row.SubstringDivider:Show()

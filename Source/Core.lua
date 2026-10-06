@@ -19,6 +19,12 @@ CobysLinkepedia = {
 -- The TOC's IconTexture, on every window's title
 CobysLinkepedia.ICON = "Interface\\Icons\\INV_Misc_Book_09"
 
+-- Whether the test files loaded: a development build. A release has none, so
+-- what only developers need (the search window's Debug button) stays out
+function CobysLinkepedia.IsDevelopmentBuild()
+  return CobysLinkepedia.Tests ~= nil
+end
+
 -------------------------------------------------------------------------------
 -- EventBus event constants
 -------------------------------------------------------------------------------
@@ -142,7 +148,7 @@ CobysLinkepedia.SlashOptions = {
     end,
     tests = function() return CobysLinkepedia.Tests end,
     extra = {
-      { name = "build", aliases = { "rebuild" }, help = "Rebuild the item database from scratch (asks first)",
+      { name = "build", aliases = { "rebuild" }, help = "Build the item database from scratch (asks first when it already has items)",
         run = function()
           if CobysLinkepedia.Scanner.StartBuild then
             CobysLinkepedia.Scanner.StartBuild()
@@ -196,7 +202,7 @@ CobysLinkepedia.SlashOptions = {
             CobysLinkepedia.Config.HandleSetCommand(rest)
           end
         end },
-      { name = "reset", help = "Delete the item database (asks first); settings and favorites stay",
+      { name = "reset", help = "Delete the item database (asks first); settings, favorites, history and saved variants stay",
         run = function()
           if CobysLinkepedia.Database.ShowResetConfirmation then
             CobysLinkepedia.Database.ShowResetConfirmation()
@@ -237,7 +243,7 @@ SLASH_COBYSLINKEPEDIALINK1 = "/link"
 SlashCmdList["COBYSLINKEPEDIALINK"] = function(input)
   local query = input:trim()
   if query == "" then
-    Msg("Usage: /link <item name>")
+    Msg("Usage: /link <name>")
     return
   end
 
@@ -335,7 +341,6 @@ EventUtil.ContinueOnAddOnLoaded(ADDON_NAME, function()
 end)
 
 EventUtil.ContinueOnPlayerLogin(function()
-  -- Show corrupt data dialog if needed
   if svCorrupt and CobysLinkepedia.Database.ShowCorruptDialog then
     CobysLinkepedia.Database.ShowCorruptDialog()
   end
@@ -392,7 +397,6 @@ EventUtil.ContinueOnPlayerLogin(function()
   -- the preload of the items saved macros name
   CobysLinkepedia.MacroTokens.Initialize()
 
-  -- Hook all existing chat edit boxes (autocomplete)
   CobysLinkepedia.Autocomplete.HookAllEditBoxes()
 
   -- Build the quick search bar now, so opening it never creates frames in combat

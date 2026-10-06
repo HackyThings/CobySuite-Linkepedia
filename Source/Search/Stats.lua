@@ -27,7 +27,7 @@ local itemStats, itemStatsGeneration
 
 function Search.ComputeStats()
   -- Item counts come from Database, which owns the storage layout; this file
-  -- adds the variant total and scan coverage on top. The counts are shared
+  -- adds the variant total on top. The counts are shared
   -- with the previous call while the items are unchanged: read, never write.
   local generation = Database.GetGeneration()
   if not itemStats or itemStatsGeneration ~= generation then
@@ -39,24 +39,7 @@ function Search.ComputeStats()
     qualityCounts = items.qualityCounts,
     typeCounts = items.typeCounts,
     variantCount = Database.GetVariantTotal(),
-    scanCoverage = 0,
   }
-
-  if not COBYS_LINKEPEDIA_DB then return stats end
-
-  -- Scan coverage: 100% only once a scan has run to its end. An unfinished
-  -- scan shows how far it got and never reads as 100%; a database that was
-  -- never scanned has no flag.
-  local scanState = COBYS_LINKEPEDIA_DB.scanState
-  if type(scanState) == "table" then
-    stats.scanComplete = scanState.complete
-    if scanState.complete then
-      stats.scanCoverage = 1
-    elseif scanState.complete == false then
-      local pos, upper = scanState.lastPosition or 0, scanState.upperBound or 0
-      stats.scanCoverage = upper > 0 and math.min(pos / upper, 0.99) or 0
-    end
-  end
 
   return stats
 end
@@ -104,7 +87,7 @@ do
         bar = Share(count),
         barColor = color,
         dim = count == 0,
-        tooltip = count > 0 and ("%s of your items are %s."):format(Percent(count), name)
+        tooltip = count > 0 and ("%s: %s of your items."):format(name, Percent(count))
           or ("No %s items in your database."):format(name),
       }
     end
@@ -154,12 +137,26 @@ do
     f:SetPoint("BOTTOMRIGHT", -8, 26)
     f:Hide()
 
-    local scroll = CreateFrame("ScrollFrame", nil, f, "UIPanelScrollFrameTemplate")
+    -- The same thin bar as the Results list beside it, shown only when the
+    -- tiles run past the bottom; the wheel scrolls too
+    local scroll = CreateFrame("ScrollFrame", nil, f)
     scroll:SetPoint("TOPLEFT", 0, 0)
-    scroll:SetPoint("BOTTOMRIGHT", -26, 0)
+    scroll:SetPoint("BOTTOMRIGHT", -20, 0)
+    scroll:EnableMouseWheel(true)
     local content = CreateFrame("Frame", nil, scroll)
     content:SetSize(math.max(scroll:GetWidth(), 1), 1)
     scroll:SetScrollChild(content)
+    local bar = CreateFrame("EventFrame", nil, f, "MinimalScrollBar")
+    bar:SetPoint("TOPLEFT", scroll, "TOPRIGHT", 4, 0)
+    bar:SetPoint("BOTTOMLEFT", scroll, "BOTTOMRIGHT", 4, 0)
+    ScrollUtil.InitScrollFrameWithScrollBar(scroll, bar)
+    bar:Hide()
+    scroll:HookScript("OnScrollRangeChanged", function(self, _, range)
+      range = range or 0
+      -- Content that shrank keeps the view inside it
+      if self:GetVerticalScroll() > range then self:SetVerticalScroll(range) end
+      bar:SetShown(range > 0)
+    end)
 
     local Layout   -- assigned below; every piece calls it when its height changes
 

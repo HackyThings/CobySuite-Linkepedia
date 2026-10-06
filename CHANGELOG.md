@@ -4,6 +4,33 @@ All notable changes to Coby's Linkepedia are documented here. Format follows [Ke
 
 ## [Unreleased]
 
+## [2.0.4] - 2026-10-06
+
+### Added
+
+- **Detail pane:** a **Link in Chat** button, plus the item's type, item level, required level and expansion under its name. With nothing selected, the pane says how to fill it.
+- The item shown in the detail pane is marked in the Results, Favorites and History lists, and the search footer starts with how many items match ("37 results").
+- When two suggestions share a name, autocomplete, Quick Search and the settings example add their item level and type in grey (or their item ID when those match too).
+- When a search finds nothing, a hint suggests a next step: Clear the filters, try Any word, or try a shorter name. Quick Search says when nothing matches, or when the database is empty.
+- Double-click a Results column's edge to fit it to the rows on screen.
+
+### Changed
+
+- The scan panel under Results shrinks to one row while no scan runs. It opens again when a scan runs or pauses.
+- Build reads **Rebuild...** once you have items.
+- On the Variants tab, the detail pane shows the item you are building.
+- History shows the date for items linked before today, and the year for older ones.
+- Quick Search opens in front of the other windows.
+- The Debug button has left the search window. `/lp debug` still opens the log.
+- **Settings:** the Cancel button is now **Undo edits**, with the same job: it drops changes you have not applied.
+- Many smaller look and wording improvements across the windows.
+
+### Fixed
+
+- The "Loading items" and "Sorting items" overlay no longer draws over other windows that cover the search window.
+- Long item names in Results stop at two lines instead of running into the next row.
+- Several smaller bug fixes.
+
 ## [2.0.3] - 2026-10-01
 
 ### Changed
@@ -90,7 +117,8 @@ Coby's Linkepedia 2.0 is a complete rewrite of Linkepedia (last released as 1.5.
 - If the saved item database is damaged, it is cleared at login and a dialog offers to rebuild it. Favorites, history and settings are kept.
 - English game clients are supported: capitalisation is ignored for the letters A to Z, and a quoted search such as `"ring"` matches whole words.
 
-[Unreleased]: https://github.com/HackyThings/CobySuite-Linkepedia/compare/v2.0.3...HEAD
+[Unreleased]: https://github.com/HackyThings/CobySuite-Linkepedia/compare/v2.0.4...HEAD
+[2.0.4]: https://github.com/HackyThings/CobySuite-Linkepedia/releases/tag/v2.0.4
 [2.0.3]: https://github.com/HackyThings/CobySuite-Linkepedia/releases/tag/v2.0.3
 [2.0.2]: https://github.com/HackyThings/CobySuite-Linkepedia/releases/tag/v2.0.2
 [2.0.1]: https://github.com/HackyThings/CobySuite-Linkepedia/releases/tag/v2.0.1

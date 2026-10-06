@@ -208,8 +208,8 @@ function Scanner.RecipeScanCommand(arg)
   end
   if job then
     local status = Scanner.GetRecipeScanStatus()
-    Utilities.Message(("The recipe scan is running: %d%%, %d gear items indexed so far."):format(
-      math.floor(status.fraction * 100), status.indexed))
+    Utilities.Message(("The recipe scan is running: %d%%, %s gear items indexed so far."):format(
+      math.floor(status.fraction * 100), BreakUpLargeNumbers(status.indexed)))
     return
   end
   Scanner.StartRecipeScan(true)
@@ -219,7 +219,7 @@ end
 -- A recipe scan finishing tells the player once, quietly
 CobysLinkepedia.EventBus:Register({ ReceiveEvent = function()
   local Utilities = CobysLinkepedia.Utilities
-  Utilities.Message(("Recipe index ready: %d craftable weapons and armor pieces."):format(Database.GetRecipeCount()), "verbose")
+  Utilities.Message(("Recipe index ready: %s craftable weapons and armor pieces."):format(BreakUpLargeNumbers(Database.GetRecipeCount())), "verbose")
 end }, { CobysLinkepedia.Events.RecipeScanComplete })
 
 Debug.Log("INIT", "Recipe scan module loaded")

@@ -5,11 +5,8 @@
 --   id, name, quality, classID, subClassID, itemLevel, reqLevel, expansionID
 -- That string is what the SavedVariable holds on disk and what this module
 -- searches, so login builds no table per item and logout serialises
--- nothing. The
--- earlier form expanded every record into a Lua table at login (176K tables,
--- tens of MB and a visible pause) and walked those tables for every query;
--- searching the strings is a handful of C-level string.find calls per bucket
--- instead. Records hold no icon: rows take icons from
+-- nothing. Searching the strings is a handful of C-level string.find calls
+-- per bucket. Records hold no icon: rows take icons from
 -- C_Item.GetItemInfoInstant.
 --
 -- Beside the strings the module keeps, rebuilt by Load():
@@ -1094,7 +1091,7 @@ function Database.GetVariants(itemID)
 end
 
 -- For callers that only need to know how many variants exist (the dropdown
--- marker, the detail pane count)
+-- marker)
 function Database.GetVariantCount(itemID)
   if not COBYS_LINKEPEDIA_DB or not COBYS_LINKEPEDIA_DB.variants then return 0 end
   local variants = COBYS_LINKEPEDIA_DB.variants[itemID]
@@ -1204,7 +1201,7 @@ end
 -- many items match.
 --
 -- The budget is checked inside a bucket too, every WALK_CHECK records, so the
--- largest bucket (thousands of records) no longer makes one long frame; a
+-- largest bucket (thousands of records) never makes one long frame; a
 -- bucket's items join the output only when its walk ends.
 --
 -- There is no global sort. Prefixes are visited in sorted order and each
@@ -1227,8 +1224,8 @@ local FINISH_PAUSE_EVERY = 4096     -- entries between pause() calls in Finish
 -- filters: type, quality, expansion. query: nil or "" for every item, else
 -- text an item's name must hold, case-insensitive. mode says how the query
 -- reads:
---   "exact" (the default): the text as typed, one piece; "quoted" for whole
---     words, as Database.Search reads it
+--   "exact" (the default, or nil): the text as typed, one piece; a query
+--     wrapped in double quotes matches whole words, as Database.Search reads it
 --   "all": every word of it, in any order and anywhere in the name
 --   "any": at least one of its words
 -- In "all" and "any" a "quoted phrase" is one term matched on whole words.
@@ -1948,19 +1945,19 @@ local resetPopup = CobysLinkepedia.Utilities.CreateDialogPopup({
   icon = CobysLinkepedia.ICON,
   title = "Delete the item database?",
   width = 400,
-  confirmText = "Reset",
+  confirmText = "Delete database",
   danger = true,
   hidden = true,
   onConfirm = function()
     Database.Reset()
-    CobysLinkepedia.Utilities.Message("Item database has been reset.")
+    CobysLinkepedia.Utilities.Message("Item database deleted.")
   end,
 })
 
 local corruptPopup = CobysLinkepedia.Utilities.CreateDialogPopup({
   name = "CobysLinkepediaCorruptPopup",
   icon = CobysLinkepedia.ICON,
-  title = "Database Corrupted",
+  title = "Item database damaged",
   width = 400,
   body = "Your item database was damaged and has been cleared.\n" ..
     "Favorites, history and settings are untouched.\n\n" ..
