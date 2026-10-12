@@ -28,7 +28,7 @@ local MAX_QUALITY = 8
 local TYPE_ORDER = { 2, 4, 0, 7, 3, 9, 8, 1, 5, 12, 13, 16, 15, 17, 18, 19, 20 }
 
 local function QualityOptions()
-  local labels, values = { "All Qualities" }, { false }
+  local labels, values = { "All qualities" }, { false }
   for q = 0, MAX_QUALITY do
     local name = Utilities.QualityNames[q]
     if name then
@@ -41,7 +41,7 @@ local function QualityOptions()
 end
 
 local function TypeOptions()
-  local labels, values = { "All Types" }, { false }
+  local labels, values = { "All types" }, { false }
   for _, classID in ipairs(TYPE_ORDER) do
     labels[#labels + 1] = Utilities.GetClassName(classID)
     values[#values + 1] = classID
@@ -50,7 +50,7 @@ local function TypeOptions()
 end
 
 local function ExpansionOptions()
-  local labels, values = { "All Expansions" }, { false }
+  local labels, values = { "All expansions" }, { false }
   local expansion = 0
   while Utilities.ExpansionNames[expansion] do
     labels[#labels + 1] = Utilities.ExpansionNames[expansion]

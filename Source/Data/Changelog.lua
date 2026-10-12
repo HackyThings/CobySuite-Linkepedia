@@ -15,6 +15,20 @@
 -------------------------------------------------------------------------------
 CobysLinkepedia.Data.Changelog = {
   {
+    version = "2.0.5",
+    title = "Reset windows, more addons and a version notice",
+    date = "2026-10-11",
+    new = {
+      "{/lp} addons: every addon by Cobanyte, with CurseForge links",
+      "{/lp} reset windows: every window back to its default place and size",
+      "Newer version notice: a chat line when someone in your guild or group has a newer version",
+    },
+    fixed = {
+      "Variant Builder: a result from your previous text can't be picked mid-search",
+      "Recipe scan: cancelling or resetting right after login stops it for the session",
+    },
+  },
+  {
     version = "2.0.4",
     title = "A richer detail pane and helpful searches",
     date = "2026-10-06",

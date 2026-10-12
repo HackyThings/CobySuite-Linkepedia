@@ -41,7 +41,7 @@ function Toast.Show(title, message, icon)
 end
 
 -- One notice now, whatever the notices setting says (the settings window's
--- Show sample notice button); returns its frame, as Show does
+-- Show Sample Notice button); returns its frame, as Show does
 function Toast.ShowSample(title, message, icon)
   showingSample = true
   local ok, frame = pcall(Toast.Show, title, message, icon)
@@ -58,7 +58,7 @@ end
 ---------------------------------------------------------------------------
 local listener = { ReceiveEvent = function(_, _, itemID, itemName)
   local _, _, _, _, icon = C_Item.GetItemInfoInstant(itemID)
-  Toast.Show("Variant Captured", itemName, icon)
+  Toast.Show("Variant captured", itemName, icon)
 end }
 
 CobysLinkepedia.EventBus:Register(listener, { CobysLinkepedia.Events.ItemCaptured })

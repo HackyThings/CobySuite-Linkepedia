@@ -7,7 +7,7 @@
 CobysLinkepedia.DebugWindow = CobySuite_CobysLinkepedia.Debug.NewWindow({
   windowName = "CobysLinkepediaDebugWindow",
   -- The brand teal (Utilities.Colors.TEXT_TEAL, whose file loads after this one)
-  title = CobySuite_CobysLinkepedia.Utilities.WrapColor("00CED1", "Coby's Linkepedia") .. " Debug Log",
+  title = CobySuite_CobysLinkepedia.Utilities.WrapColor("00CED1", "Coby's Linkepedia") .. " debug log",
   icon = CobysLinkepedia.ICON,
   logger = CobysLinkepedia.Debug,
   -- Position and size, kept like the other windows' (the table exists by
@@ -36,7 +36,7 @@ CobysLinkepedia.DebugWindow = CobySuite_CobysLinkepedia.Debug.NewWindow({
 local wipePopup = CobySuite_CobysLinkepedia.UI.CreateDialogPopup({
   name = "CobysLinkepediaWipePopup",
   icon = CobysLinkepedia.ICON,
-  title = "Wipe All Coby's Linkepedia Data",
+  title = "Wipe all Coby's Linkepedia data",
   width = 400,
   body = "This will delete ALL Coby's Linkepedia data:\n" ..
     "the item database, saved variants, settings, favorites, history, window positions and the debug log.\n\n" ..

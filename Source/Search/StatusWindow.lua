@@ -163,7 +163,7 @@ local SECTIONS = {
     },
   },
   {
-    title = "Idle Scan",
+    title = "Idle scan",
     rows = {
       {
         key = "idle", label = "Idle scan",

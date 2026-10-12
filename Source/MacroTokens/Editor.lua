@@ -93,7 +93,7 @@ end
 
 local function Change(index, body, cursor, message)
   if #body > MAX_MACRO_CHARS then
-    return false, "Not enough room: a macro holds 255 characters."
+    return false, "Not enough room: a macro holds 255 bytes."
   end
   return true, { index = index, body = body, cursor = cursor, message = message }
 end

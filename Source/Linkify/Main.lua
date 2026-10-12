@@ -15,7 +15,7 @@
 -- Typed chat converts [Item Name] (autoLinkifyOnSend) and item tokens
 -- (expandItemTokens, Tokens.lua). Macros convert item tokens only: a macro
 -- is written once and pressed often, so it names its item exactly. The
--- Chat Lab (Tests/ChatLab.lua) watches both paths through a send observer
+-- Chat Lab (a development tool) watches both paths through a send observer
 -- that exists only while the lab is open.
 --
 -- Qualifiers: [Name~R2] asks for the rank 2 variant, [Name~450] for the item
@@ -243,7 +243,7 @@ function Linkify.LinkOutgoing(editBox, fromMacro, resolve, resolveToken)
   return "linked"
 end
 
--- A send observer for the Chat Lab (Tests/ChatLab.lua). Set, it is called
+-- A send observer for the Chat Lab (a development tool). Set, it is called
 -- after each pre-send rewrite with { before, after, result, fromMacro,
 -- chatType, time }; an error in it is swallowed. Unset (the
 -- normal case) the pre-send path is exactly LinkOutgoing and nothing is read

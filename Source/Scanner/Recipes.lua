@@ -54,7 +54,7 @@ local function WaitReason()
 end
 
 local function IsGear(itemID)
-  local _, _, _, _, _, classID = GetItemInfoInstant(itemID)
+  local _, _, _, _, _, classID = C_Item.GetItemInfoInstant(itemID)
   return classID == Enum.ItemClass.Weapon or classID == Enum.ItemClass.Armor
 end
 
@@ -151,10 +151,10 @@ end
 -- notify false is for Database.Reset, which fires its own update. keepSchedule
 -- (the Variants suite) leaves this session's automatic start alone.
 function Scanner.CancelRecipeScan(notify, keepSchedule)
+  if not keepSchedule then cancelledThisSession = true end
   if not job then return false end
   Stop()
-  if not keepSchedule then cancelledThisSession = true end
-  Debug.Log("SCAN", "Recipe scan cancelled")
+  Debug.Log("SCAN", "Recipe scan canceled")
   if notify ~= false then
     Fire(CobysLinkepedia.Events.RecipeScanCancelled)
   end
@@ -202,7 +202,7 @@ function Scanner.RecipeScanCommand(arg)
     if Scanner.CancelRecipeScan(true) then
       Utilities.Message("Recipe scan stopped. It continues at your next login, or with /lp recipes.")
     else
-      Utilities.Message("No recipe scan is running.")
+      Utilities.Message("No recipe scan is running, and the automatic start is off for this session.")
     end
     return
   end

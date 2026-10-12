@@ -1,13 +1,14 @@
 -- Config Window: the addon's settings window, the suite's standard one
 -- (CobySuite.UI.CreateSettingsWindow): a sidebar of categories, staged edits
--- that Apply writes through Config.Set, Undo edits and Defaults, and a Guide
+-- that Apply writes through Config.Set, Undo Edits and Defaults, and a Guide
 -- button beside Defaults that opens the feature guide. Opened from
 -- /lp settings, the minimap button and the Options > AddOns entry
 -- (registered at the bottom). Built at load, so opening it never creates
 -- frames in combat; the controls are painted from config on every show.
 --
 -- Each feature's on/off switch sits on its section header or card, and the
--- rows that tune it are disabled while it is off. The examples
+-- rows that tune it are disabled while it is off. Autocomplete also holds the
+-- suite's version check (its Updates section, last). The examples
 -- (Config/Examples.lua) show what the staged settings do and change
 -- nothing; the Item database card's buttons start scans at once and never
 -- apply staged settings.
@@ -102,6 +103,7 @@ local window = UI.CreateSettingsWindow({
           dimWhen = function(get) return not get(Opt.AUTOCOMPLETE_ENABLED) end,
           description = "Up and Down move through the list, Tab or a click picks, and Enter still sends your message.",
         }
+        CobySuite_CobysLinkepedia.VersionCheck.AddSettingsRows(panel, Opt.VERSION_CHECK)
       end,
     },
     {
@@ -168,7 +170,7 @@ local window = UI.CreateSettingsWindow({
 
         panel:Section("Idle scan", {
           icon = ICONS .. "INV_Misc_PocketWatch_01",
-          subtitle = "While you play, quietly asks again for items a scan could not get. Never in combat or during a scan. The search window's Idle Scan box is the same switch.",
+          subtitle = "While you play, quietly asks again for items a scan could not get. Never in combat or during a scan. The search window's Idle scan box is the same switch.",
           switchKey = Opt.IDLE_SCAN_ENABLED,
           switchTooltip = "Turn the idle scan on or off.",
         })
@@ -225,7 +227,7 @@ local window = UI.CreateSettingsWindow({
           description = "A small notice at the bottom right when the addon saves a new version of an item you came across.",
         }
         panel:Button{
-          text = "Show sample notice", width = 160,
+          text = "Show Sample Notice", width = 160,
           description = "Shows one now, whether or not the box above is ticked.",
           onClick = function() Examples.ShowSampleNotice() end,
         }

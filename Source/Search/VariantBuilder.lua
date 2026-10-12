@@ -589,7 +589,7 @@ local function RefreshChoices()
 
   local height = BOX_TOP
   if trackMode then
-    frame.BoxTitle:SetText("Upgrade Track")
+    frame.BoxTitle:SetText("Upgrade track")
     frame.BoxHelp:SetText("Track choices do not confirm where this item drops.")
     frame.SeasonDropdown:GenerateMenu()
     frame.TrackDropdown:GenerateMenu()
@@ -949,7 +949,8 @@ local function BuildHeader()
     row.Name:SetJustifyH("LEFT")
     row.Name:SetWordWrap(false)
     row:SetScript("OnClick", function(self)
-      if not self.itemID then return end
+      -- A row built for the previous text cannot be picked while a search waits or runs
+      if not self.itemID or frame.Picker:IsSearchPending() or cancelPick then return end
       HidePicker()
       frame.Picker:ClearSearch()
       frame.Picker:ClearFocus()
@@ -1141,7 +1142,7 @@ local function BuildChoices()
   frame.ModeDropdown:SetPoint("TOPRIGHT", -BOX_PAD, -6)
   frame.ModeDropdown:SetupMenu(function(_, root)
     root:CreateRadio("Crafting", function() return state.mode == "crafted" end, function() SetMode("crafted") end)
-    root:CreateRadio("Upgrade Track", function() return state.mode == "track" end, function() SetMode("track") end)
+    root:CreateRadio("Upgrade track", function() return state.mode == "track" end, function() SetMode("track") end)
   end)
   frame.ModeLabel = CreateFieldLabel(box, "Build as")
   frame.ModeLabel:SetPoint("RIGHT", frame.ModeDropdown, "LEFT", -8, 0)

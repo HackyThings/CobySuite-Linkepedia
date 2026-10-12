@@ -4,6 +4,19 @@ All notable changes to Coby's Linkepedia are documented here. Format follows [Ke
 
 ## [Unreleased]
 
+## [2.0.5] - 2026-10-11
+
+### Added
+
+- **Other addons by the same author.** `/lp addons` lists every addon Cobanyte has released, the same list in each of them: what it does, pictures you can click to see bigger, and its CurseForge link to copy into your browser. Addons you already have are marked. It only opens when you ask, and the guide's last section points to it. The list remembers its size and where you left it.
+- **Reset windows.** `/lp reset windows` puts every window back to its default place and size after you confirm; your settings, favorites and database are not touched.
+- **Newer version notice.** When someone in your guild or group has a newer version of Coby's Linkepedia, one line in chat says which version is out and which one you have. Your copy shares its version with them quietly, so they hear about a newer one from you too. On by default; turn it off with "Tell me when a newer version is out" in `/lp settings` (Autocomplete).
+
+### Fixed
+
+- **Variant Builder picker.** A result left over from your previous text can no longer be picked while a new search is still running.
+- **Recipe scan.** `/lp recipes cancel` and a database reset in the first seconds after login now stop the automatic recipe scan from starting that session, even when it had not started yet.
+
 ## [2.0.4] - 2026-10-06
 
 ### Added
@@ -117,7 +130,8 @@ Coby's Linkepedia 2.0 is a complete rewrite of Linkepedia (last released as 1.5.
 - If the saved item database is damaged, it is cleared at login and a dialog offers to rebuild it. Favorites, history and settings are kept.
 - English game clients are supported: capitalisation is ignored for the letters A to Z, and a quoted search such as `"ring"` matches whole words.
 
-[Unreleased]: https://github.com/HackyThings/CobySuite-Linkepedia/compare/v2.0.4...HEAD
+[Unreleased]: https://github.com/HackyThings/CobySuite-Linkepedia/compare/v2.0.5...HEAD
+[2.0.5]: https://github.com/HackyThings/CobySuite-Linkepedia/releases/tag/v2.0.5
 [2.0.4]: https://github.com/HackyThings/CobySuite-Linkepedia/releases/tag/v2.0.4
 [2.0.3]: https://github.com/HackyThings/CobySuite-Linkepedia/releases/tag/v2.0.3
 [2.0.2]: https://github.com/HackyThings/CobySuite-Linkepedia/releases/tag/v2.0.2

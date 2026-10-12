@@ -206,7 +206,7 @@ end
 -- ID); each has a width that showed them whole in game (Verify runs of
 -- 2026-10-01). Names wrap instead.
 local COLUMNS = {
-  { key = "name",      label = "Item Name",  width = 182, sortable = true, justify = "LEFT",   tooltip = "Item name, colored by quality" },
+  { key = "name",      label = "Item name",  width = 182, sortable = true, justify = "LEFT",   tooltip = "Item name, colored by quality" },
   { key = "itemLevel", label = "iLvl",       width = 38,  sortable = true, justify = "CENTER", tooltip = "Item level" },
   { key = "type",      label = "Type",       width = 90,  sortable = true, justify = "LEFT",   tooltip = "Item type, such as Weapon or Armor" },
   { key = "subType",   label = "Subtype",    width = 92,  sortable = true, justify = "LEFT",   tooltip = "Item subtype, such as Cloth or Dagger" },
@@ -490,20 +490,20 @@ function Search.ShowContextMenu(anchor, item)
     rootDescription:CreateButton("Link in Chat", function()
       Search.LinkItemToChat(item.itemID)
     end)
-    rootDescription:CreateButton("Send name to chat", function()
+    rootDescription:CreateButton("Send Name to Chat", function()
       PutInChat(item.name)
     end)
-    rootDescription:CreateButton("Send item ID to chat", function()
+    rootDescription:CreateButton("Send Item ID to Chat", function()
       PutInChat(tostring(item.itemID))
     end)
-    rootDescription:CreateButton("Send Wowhead link to chat", function()
+    rootDescription:CreateButton("Send Wowhead Link to Chat", function()
       PutInChat("https://www.wowhead.com/item=" .. item.itemID)
     end)
 
     -- The item's ${i=ID} token, to copy from chat (where it also links when
     -- sent). Macros get tokens from the macro window's panel, whose clicks
     -- are the only safe way to change a macro.
-    rootDescription:CreateButton("Send item token to chat", function()
+    rootDescription:CreateButton("Send Item Token to Chat", function()
       PutInChat(CobysLinkepedia.Linkify.FormatToken(item.itemID))
     end)
 
@@ -775,15 +775,6 @@ end
 local COUNT_RANGE_MAX = 4194304   -- 2^22 slots at most in the count array
 local PAUSE_EVERY = 256           -- entries between budget checks: a text key costs a few microseconds
 
--- /lp perf sets this to a table while it times the sorts: the sort writes
--- the step it is in (and the key range) there, so the report can say where
--- the longest slice was spent
-local sortProbe = nil
-
-local function Phase(name)
-  if sortProbe then sortProbe.phase = name end
-end
-
 local TEXT_COLUMNS = { type = true, subType = true, expansion = true }
 
 local function SortedFromBase(key, ascending, base, pause)
@@ -799,7 +790,6 @@ local function SortedFromBase(key, ascending, base, pause)
   end
 
   if key == "name" and base.nameOrder then
-    Phase("copy")
     local order = base.nameOrder
     for i = 1, n do
       local src = ascending and order[i] or order[n + 1 - i]
@@ -815,7 +805,6 @@ local function SortedFromBase(key, ascending, base, pause)
   -- after every few hundred entries, since a write can land between slices)
   local keys = ids
   if key ~= "itemID" then
-    Phase("keys")
     keys = NewArray(n)
     local EntrySortKey, GetGeneration = Database.EntrySortKey, Database.GetGeneration
     local current = base.generation ~= nil and base.generation == GetGeneration()
@@ -831,7 +820,6 @@ local function SortedFromBase(key, ascending, base, pause)
   -- Ranks: text keys by their place among the distinct values, numbers as they are
   local ranks = keys
   if TEXT_COLUMNS[key] then
-    Phase("ranks")
     local distinct, rankOf = {}, {}
     for i = 1, n do
       local k = keys[i]
@@ -849,8 +837,6 @@ local function SortedFromBase(key, ascending, base, pause)
       Tick(i)
     end
   end
-
-  Phase("range")
   local minRank, maxRank = math.huge, -math.huge
   local countable = true
   for i = 1, n do
@@ -866,10 +852,7 @@ local function SortedFromBase(key, ascending, base, pause)
   if n == 0 then return outIDs, outEntries end
   if countable and maxRank - minRank + 1 > COUNT_RANGE_MAX then countable = false end
 
-  if sortProbe then sortProbe.range = countable and (maxRank - minRank + 1) or "not countable" end
-
   if not countable then
-    Phase("comparison sort")
     local perm = {}
     for i = 1, n do perm[i] = i end
     table.sort(perm, function(a, b)
@@ -893,7 +876,6 @@ local function SortedFromBase(key, ascending, base, pause)
   if not table.create then
     for i = 1, n do outIDs[i], outEntries[i] = 0, 0 end
   end
-  Phase("count")
   local range = maxRank - minRank + 1
   local count = NewArray(range)
   for r = 1, range do
@@ -905,7 +887,6 @@ local function SortedFromBase(key, ascending, base, pause)
     count[slot] = count[slot] + 1
     Tick(i)
   end
-  Phase("place")
   local nextPos = 1
   for r = 1, range do
     local c = count[r]
@@ -923,8 +904,19 @@ local function SortedFromBase(key, ascending, base, pause)
   return outIDs, outEntries
 end
 
--- The Browse suite checks the column sorts against a comparison sort
+-- The Browse suite checks the column sorts against a comparison sort, and a
+-- development build times them with the walk's slice budget
 Search.SortedFromBase = SortedFromBase
+Search.BUILD_BUDGET_MS = BUILD_BUDGET_MS
+
+-- The keys of the columns a click sorts by, in header order
+function Search.SortableColumns()
+  local keys = {}
+  for _, col in ipairs(COLUMNS) do
+    if col.sortable then keys[#keys + 1] = col.key end
+  end
+  return keys
+end
 
 -- Puts a cached base on screen in the current sort. Quality descending is
 -- the base order and costs nothing; anything else sorts as a job behind the
@@ -1220,407 +1212,6 @@ function Search.SetSearchMode(mode)
   if CobysLinkepediaSearchWindow and CobysLinkepediaSearchWindow.UpdateStatusBar then
     CobysLinkepediaSearchWindow:UpdateStatusBar()
   end
-end
-
--------------------------------------------------------------------------------
--- Performance run: the test window's Run Perf button and /lp perf. Times the
--- heaviest work on the player's own database, one measurement per frame, and
--- hands back a plain-text report. A measurement runs its steps or slices back
--- to back, so each number is that step's own cost. Work the addon spreads
--- over frames is judged against a 16 ms frame; work that runs as one call is
--- listed apart. Refused in combat, during a scan and on an empty database;
--- stops when combat or a scan starts. Lines also go to the debug log (UI).
--------------------------------------------------------------------------------
-local FRAME_RULE_MS = 16
-local perfRunning = false
-
-function Search.IsPerformanceRunning()
-  return perfRunning
-end
-
--- onStatus(text, fraction) reports progress; onDone(report) gets the report
--- text, also for a run that stopped early. Returns false, after onStatus
--- with the reason, when the run cannot start.
-function Search.RunPerformance(onStatus, onDone)
-  local refusal
-  if perfRunning then
-    refusal = "A performance run is already going."
-  elseif UnitAffectingCombat("player") then
-    refusal = "The performance run cannot start in combat."
-  elseif CobysLinkepedia.Scanner.GetStatus().isActive then
-    refusal = "The performance run cannot start while a scan is active."
-  elseif Database.GetCount() == 0 then
-    refusal = "The item database is empty; build it first (/lp build)."
-  end
-  if refusal then
-    onStatus(refusal)
-    return false
-  end
-  perfRunning = true
-
-  local clock = debugprofilestop
-  local spread, once, overRule = {}, {}, {}
-
-  -- Work the addon spreads over frames: worst is its largest frame
-  local function Spread(worst, label, fmt, ...)
-    local line = label .. ": " .. string.format(fmt, ...)
-    spread[#spread + 1] = line
-    if worst > FRAME_RULE_MS then
-      overRule[#overRule + 1] = string.format("%s: %.1f ms", label, worst)
-    end
-    Debug.Log("UI", "PERF %s", line)
-  end
-
-  -- Work that runs as one call
-  local function Once(label, fmt, ...)
-    local line = label .. ": " .. string.format(fmt, ...)
-    once[#once + 1] = line
-    Debug.Log("UI", "PERF %s", line)
-  end
-
-  -- A walk at the live budget: total, the largest step (a frame) and steps
-  local function Walk(walker)
-    local total, worst, steps = 0, 0, 0
-    while not walker.done do
-      local t = clock()
-      walker:Step(BUILD_BUDGET_MS)
-      local dt = clock() - t
-      total, steps = total + dt, steps + 1
-      if dt > worst then worst = dt end
-    end
-    return total, worst, steps
-  end
-
-  -- A job's slices, run back to back: total, the largest slice, slices, the
-  -- job's result, and where the largest slice ran (the sort steps it began
-  -- and ended in, and the change in Lua memory across it: a large drop means
-  -- a garbage collection cycle finished inside it)
-  local function TimeJob(fn)
-    local co = coroutine.create(fn)
-    local total, worst, slices, result = 0, 0, 0, nil
-    local where = ""
-    while coroutine.status(co) ~= "dead" do
-      local phaseBefore = sortProbe and sortProbe.phase
-      local memBefore = collectgarbage("count")
-      sliceStart = clock()
-      local ok, value = coroutine.resume(co, Pause)
-      local dt = clock() - sliceStart
-      local memAfter = collectgarbage("count")
-      if not ok then error(value, 0) end
-      result = value
-      total, slices = total + dt, slices + 1
-      if dt > worst then
-        worst = dt
-        if sortProbe then
-          local phaseAfter = sortProbe.phase
-          where = string.format(" (%s, memory %+.1f MB)",
-            phaseBefore == phaseAfter and tostring(phaseAfter) or (tostring(phaseBefore) .. " to " .. tostring(phaseAfter)),
-            (memAfter - memBefore) / 1024)
-        end
-      end
-    end
-    return total, worst, slices, result, where
-  end
-
-  local state = {}
-  local steps = {}
-  local function Add(label, fn)
-    steps[#steps + 1] = { label = label, fn = fn }
-  end
-
-  Add("browse walk", function()
-    state.generation = Database.GetGeneration()
-    local builder = Database.NewBrowseBuilder(nil)
-    local total, worst, count = Walk(builder)
-    state.builder, state.bucketCount = builder, builder.total
-    Spread(worst, "Browse walk", "%d buckets, %.1f ms over %d steps, largest step %.1f ms", builder.total, total, count, worst)
-  end)
-
-  Add("browse finish", function()
-    local total, worst, slices, finished = TimeJob(function(pause) return { state.builder:Finish(true, pause) } end)
-    state.builder = nil
-    state.base = { baseIDs = finished[1], baseEntries = finished[2], n = finished[3],
-      nameOrder = finished[5], generation = state.generation }
-    Spread(worst, "Browse finish", "%.1f ms over %d slices, largest %.1f ms, %d entries", total, slices, worst, finished[3])
-  end)
-
-  -- Each column sort twice: a long slice that comes back in the same step is
-  -- the sort's own work; one that moves or goes away is the collector
-  for _, col in ipairs(COLUMNS) do
-    if col.sortable then
-      for run = 1, 2 do
-        Add(("sort by %s, run %d"):format(col.key, run), function()
-          sortProbe = { phase = "start" }
-          local ok, total, worst, slices, _, where = pcall(TimeJob, function(pause)
-            return SortedFromBase(col.key, true, state.base, pause)
-          end)
-          local range = sortProbe.range
-          sortProbe = nil
-          if not ok then error(total, 0) end
-          Spread(worst, ("Column sort %s, run %d"):format(col.key, run), "%.1f ms over %d slices, largest %.1f ms%s, key range %s",
-            total, slices, worst, where, tostring(range or "none"))
-        end)
-      end
-    end
-  end
-
-  -- The search window's text search: a query build and its finish, in
-  -- each search mode
-  for _, case in ipairs({ { "s", "exact" }, { "of the", "exact" }, { "of the", "all" }, { "of the", "any" } }) do
-    local query, mode = case[1], case[2]
-    Add(("window search \"%s\" (%s)"):format(query, mode), function()
-      local builder = Database.NewBrowseBuilder(nil, query, mode)
-      local walkTotal, walkWorst, walkSteps = Walk(builder)
-      local finishTotal, finishWorst, finishSlices, finished = TimeJob(function(pause) return { builder:Finish(true, pause) } end)
-      Spread(math.max(walkWorst, finishWorst), ("Window search \"%s\" (%s)"):format(query, mode),
-        "walk %.1f ms over %d steps (largest %.1f ms), finish %.1f ms over %d slices (largest %.1f ms), %d results",
-        walkTotal, walkSteps, walkWorst, finishTotal, finishSlices, finishWorst, finished[3])
-    end)
-  end
-
-  -- Autocomplete, quick search, the macro panel and the Variant Builder
-  -- picker: capped searches stepped over frames
-  for _, query in ipairs({ "s", "sw", "of the", "zzqx" }) do
-    Add(("typing search \"%s\""):format(query), function()
-      local total, worst, count = Walk(Database.NewSearch(query, 10))
-      Spread(worst, ("Typing search \"%s\" (10 results)"):format(query), "%.1f ms over %d steps, largest step %.1f ms", total, count, worst)
-    end)
-  end
-
-  -- Chat tokens and /link: the same capped searches in one call
-  for _, query in ipairs({ "s", "sw", "of the", "zzqx" }) do
-    Add(("search \"%s\" in one call"):format(query), function()
-      local t = clock()
-      Database.Search(query, 10)
-      Once(("Search \"%s\", 10 results (chat tokens, /link)"):format(query), "%.1f ms", clock() - t)
-    end)
-  end
-  for _, query in ipairs({ "of the", "s", "zzqx" }) do
-    Add(("uncapped search \"%s\""):format(query), function()
-      local t = clock()
-      local results = Database.Search(query, 0)
-      Once(("Search \"%s\", every result (API only)"):format(query), "%.1f ms, %d results", clock() - t, #results)
-    end)
-  end
-
-  -- The send-time rewrite of a typed message, without sending anything
-  Add("chat send", function()
-    local Linkify = CobysLinkepedia.Linkify
-    local base = state.base
-    local item = base and base.n > 0 and Database.MaterializeEntry(base.baseIDs[1], base.baseEntries[1])
-    local name = item and item.name ~= "" and item.name or "Hearthstone"
-    local filler = string.rep("plain words ", 17)
-    local REPEAT = 50
-    local function Time(label, fn, text)
-      local total, worst = 0, 0
-      for _ = 1, REPEAT do
-        local t = clock()
-        fn(text)
-        local dt = clock() - t
-        total = total + dt
-        if dt > worst then worst = dt end
-      end
-      Once(label, "%.3f ms average, %.3f ms worst of %d", total / REPEAT, worst, REPEAT)
-    end
-    Time(("Chat send, %d characters, no brackets"):format(#filler), Linkify.TransformMessage, filler)
-    Time("Chat send, the same with one [Item]", Linkify.TransformMessage, filler .. "[" .. name .. "]")
-    Time("Chat send, the same with one ${n=Item} token", Linkify.ExpandTokens, filler .. "${n=" .. name .. "}")
-  end)
-
-  -- The Stats tab: a recount of every item record (what it pays when the
-  -- items changed), then a refresh that reuses those counts because the
-  -- item generation has not moved
-  Add("stats", function()
-    local t = clock()
-    local stats = Database.ComputeItemStats()
-    Once("Item statistics recount (Stats tab)", "%.1f ms, %d items", clock() - t, stats.totalItems)
-    Search.ComputeStats()
-    t = clock()
-    Search.ComputeStats()
-    Once("Stats refresh with cached counts", "%.3f ms", clock() - t)
-  end)
-
-  -- The scanner, through its probes (Scanner.Perf): nothing here starts a
-  -- scan. The idle tick is one real tick a second early: it asks the server
-  -- for up to idleScanRate IDs and may store items or mark IDs dead, as the
-  -- ticker would have. The rest leaves what is saved alone. The dead-ID list
-  -- goes first, so the known-ID set after it does not pay the list's load.
-  local Scanner = CobysLinkepedia.Scanner
-  local WALK_BUDGET_MS = Scanner.Perf.WALK_BUDGET_MS
-
-  Add("dead-ID list", function()
-    local m = Scanner.Perf.MeasureDeadList()
-    Once(("Dead-ID list save, %d IDs (at logout and a scan's end)"):format(m.count),
-      "%.1f ms, %.1f KB saved", m.encodeMs, m.bytes / 1024)
-    Once(("Dead-ID list load, %d IDs (its first use after login)"):format(m.count), "%.1f ms", m.decodeMs)
-  end)
-
-  -- A discover probe's walk, its steps back to back: total, largest, steps
-  local function ProbeWalk(probe, budgetMs)
-    local total, worst, count = 0, 0, 0
-    while not probe.done do
-      local t = clock()
-      probe:Step(budgetMs)
-      local dt = clock() - t
-      total, count = total + dt, count + 1
-      if dt > worst then worst = dt end
-    end
-    return total, worst, count
-  end
-
-  Add("expand walk", function()
-    local probe = Scanner.Perf.NewDiscoverProbe()
-    Once(("Known-ID set, %d stored and %d dead (the start of an Expand)"):format(probe.stored, probe.dead),
-      "%.1f ms", probe.buildMs)
-    local total, worst, count = ProbeWalk(probe, WALK_BUDGET_MS)
-    Spread(worst, ("Expand walk, %d ms budget"):format(WALK_BUDGET_MS),
-      "%.1f ms over %d steps to ID %d, largest step %.1f ms, %d IDs to ask the server about",
-      total, count, probe.pos, worst, probe.listed)
-  end)
-
-  Add("build walk", function()
-    local probe = Scanner.Perf.NewDiscoverProbe(true)
-    local total, worst, count = ProbeWalk(probe, WALK_BUDGET_MS)
-    Spread(worst, ("Build walk, %d ms budget"):format(WALK_BUDGET_MS),
-      "%.1f ms over %d steps to ID %d, largest step %.1f ms, %d IDs the client lists",
-      total, count, probe.pos, worst, probe.listed)
-  end)
-
-  Add("idle tick", function()
-    local ms, queued, rate = Scanner.Perf.IdleTick()
-    if ms then
-      Once(("Idle tick, up to %d item IDs from a queue of %d (every second)"):format(rate, queued), "%.3f ms", ms)
-    else
-      Once("Idle tick", "not measured: the idle scan is off")
-    end
-  end)
-
-  Add("status window refresh", function()
-    local window = Search.GetStatusWindow()
-    local REPEAT = 20
-    local total, worst = 0, 0
-    for _ = 1, REPEAT do
-      local t = clock()
-      window:Refresh()
-      local dt = clock() - t
-      total = total + dt
-      if dt > worst then worst = dt end
-    end
-    Once("Status window refresh (twice a second while it shows)", "%.3f ms average, %.3f ms worst of %d",
-      total / REPEAT, worst, REPEAT)
-  end)
-
-  -- A flush on a scratch database, then the index rebuild the swap back
-  -- costs (the same Load a login or /reload runs)
-  Add("flush and index rebuild", function()
-    state.changed = Database.GetGeneration() ~= state.generation
-    state.base = nil
-    local previous = Database.ReplaceStorage({})
-    local ok, err = pcall(function()
-      Database.EnsureStorage()
-      for i = 1, 1000 do
-        Database.Store(95000000 + i, string.format("Perf Probe %04d", i), 1, 15, 0, 1, 0, 0)
-      end
-      local t = clock()
-      Database.Flush()
-      Once("Flush of 1,000 pending records", "%.2f ms", clock() - t)
-    end)
-    local t = clock()
-    Database.ReplaceStorage(previous)
-    Once("Index rebuild of the whole database (what login and /reload pay)", "%.1f ms", clock() - t)
-    if not ok then error(err, 0) end
-  end)
-
-  local startedAt = clock()
-  local memoryStart = collectgarbage("count") / 1024
-  local itemCount = Database.GetCount()
-  local idleQueued = CobysLinkepedia.Scanner.GetIdleStatus().queued
-  local deadCount = CobysLinkepedia.Scanner.GetDeadCount()
-  local index, completed, stopped = 0, 0, nil
-
-  local function BuildReport()
-    local lines = {}
-    local function add(text) lines[#lines + 1] = text or "" end
-    add("=== COBY'S LINKEPEDIA PERFORMANCE REPORT ===")
-    add("")
-    add("--- ENVIRONMENT ---")
-    add("Addon Version: " .. (C_AddOns.GetAddOnMetadata("CobysLinkepedia", "Version") or "?"))
-    add("Shared Library: " .. CobySuite_CobysLinkepedia.LibraryVersionText())
-    local version, build = GetBuildInfo()
-    add(("WoW Build: %s (build %s)"):format(version or "?", build or "?"))
-    add("Date: " .. date("%Y-%m-%d %H:%M:%S"))
-    add(("Items: %d in %s buckets"):format(itemCount, tostring(state.bucketCount or "?")))
-    add(("Item IDs waiting on the server: %d; not on the server: %d"):format(idleQueued, deadCount))
-    add(("Lua memory at start: %.1f MB"):format(memoryStart))
-    add(("Slice budget %d ms; a frame over %d ms breaks the rule"):format(BUILD_BUDGET_MS, FRAME_RULE_MS))
-    add("")
-    add("--- SUMMARY ---")
-    if stopped then add("Stopped early: " .. stopped) end
-    add(("Measurements: %d of %d in %.1f s"):format(completed, #steps, (clock() - startedAt) / 1000))
-    if #overRule == 0 then
-      add("Frames over 16 ms in work spread over frames: none")
-    else
-      add("Frames over 16 ms in work spread over frames: " .. #overRule)
-      for _, line in ipairs(overRule) do add("  " .. line) end
-    end
-    if state.changed then
-      add("Note: the database changed during the run, so sorts after the change read each item's id too")
-    end
-    add("")
-    add("--- SPREAD OVER FRAMES ---")
-    for _, line in ipairs(spread) do add(line) end
-    add("")
-    add("--- ONE CALL ---")
-    for _, line in ipairs(once) do add(line) end
-    add("")
-    add("=== END REPORT ===")
-    return table.concat(lines, "\n")
-  end
-
-  local function Finish()
-    perfRunning = false
-    sortProbe = nil
-    local report = BuildReport()
-    state = nil
-    Debug.Log("UI", "PERF run %s", stopped and ("stopped: " .. stopped) or "complete")
-    onStatus(stopped and ("Performance run stopped: " .. stopped) or
-      ("Performance run done in %.1f s. The report is open and selected: press Ctrl+C."):format((clock() - startedAt) / 1000), 1)
-    onDone(report)
-  end
-
-  -- The next step's label goes up a frame before it runs, so it is on screen
-  local function Announce()
-    local step = steps[index + 1]
-    if step then
-      onStatus(("Measuring %d of %d: %s"):format(index + 1, #steps, step.label), index / #steps)
-    end
-  end
-
-  local function Next()
-    if UnitAffectingCombat("player") then
-      stopped = "combat started"
-      return Finish()
-    end
-    if CobysLinkepedia.Scanner.GetStatus().isActive then
-      stopped = "a scan started"
-      return Finish()
-    end
-    index = index + 1
-    local step = steps[index]
-    if not step then return Finish() end
-    local ok, err = pcall(step.fn)
-    if not ok then
-      stopped = step.label .. " failed: " .. tostring(err)
-      return Finish()
-    end
-    completed = completed + 1
-    Announce()
-    C_Timer.After(0, Next)
-  end
-
-  Announce()
-  C_Timer.After(0, Next)
-  return true
 end
 
 -------------------------------------------------------------------------------

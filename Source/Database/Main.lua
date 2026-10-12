@@ -539,6 +539,42 @@ function Database.ReplaceStorage(db, deferLoad)
   return previous
 end
 
+-- Swaps a database in with its own index and returns what it replaced as a
+-- token, which a later SwapStorage(token) puts back as it was: the same
+-- table, index, counts and generations, with no Load. The Perf benchmarks
+-- (Task #294) swap a scratch database in and out on every frame slice, and
+-- ReplaceStorage would index the player's whole table again each time (on
+-- 2026-10-06 that was up to 746 ms a slice). A plain table (not a token) is
+-- indexed by a Load once; its generations start in a range of their own, so
+-- a view cached for one database never passes for another's.
+local SWAP_SPAN = 2 ^ 32
+local swapSerial = 0
+
+function Database.SwapStorage(dbOrToken)
+  FlushAll()
+  local out = {
+    swapToken = true, db = COBYS_LINKEPEDIA_DB, prefixList = prefixList, prefixIndex = prefixIndex,
+    idToPrefix = idToPrefix, itemCount = itemCount, generation = generation, variantGeneration = variantGeneration,
+    variantEpoch = variantEpoch, variantTotal = variantTotal, indexComplete = indexComplete,
+  }
+  local token = type(dbOrToken) == "table" and dbOrToken.swapToken and dbOrToken or nil
+  if token then
+    COBYS_LINKEPEDIA_DB = token.db
+    prefixList, prefixIndex, idToPrefix, pending = token.prefixList, token.prefixIndex, token.idToPrefix, {}
+    itemCount, variantTotal, indexComplete = token.itemCount, token.variantTotal, token.indexComplete
+    generation, variantGeneration, variantEpoch = token.generation, token.variantGeneration, token.variantEpoch
+  else
+    swapSerial = swapSerial + 1
+    COBYS_LINKEPEDIA_DB = dbOrToken
+    prefixList, prefixIndex, idToPrefix, pending = {}, {}, {}, {}
+    itemCount = 0
+    generation = swapSerial * SWAP_SPAN
+    variantGeneration, variantEpoch = generation, generation
+    Database.Load()
+  end
+  return out
+end
+
 -- Wipe the item table only, keeping variants, favorites and history. A build
 -- scan is advertised as "rebuild from scratch", so nothing from the old table
 -- may survive it.
@@ -1945,7 +1981,7 @@ local resetPopup = CobysLinkepedia.Utilities.CreateDialogPopup({
   icon = CobysLinkepedia.ICON,
   title = "Delete the item database?",
   width = 400,
-  confirmText = "Delete database",
+  confirmText = "Delete Database",
   danger = true,
   hidden = true,
   onConfirm = function()

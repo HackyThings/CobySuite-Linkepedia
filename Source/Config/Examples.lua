@@ -338,7 +338,7 @@ function Examples.DatabaseActions()
       onClick = function() Examples.StartBuild() end,
     },
     {
-      text = "Status window",
+      text = "Status Window",
       tooltip = "Watch the database, the scans and the idle scan, live (/lp status).",
       onClick = function() CobysLinkepedia.Search.ToggleStatusWindow() end,
     },
@@ -421,7 +421,7 @@ function Examples.ShowSampleNotice()
   local itemID = item and item.itemID or SAMPLE_ITEM_ID
   local name = item and item.name or C_Item.GetItemNameByID(itemID) or "Hearthstone"
   local icon = select(5, C_Item.GetItemInfoInstant(itemID))
-  return CobysLinkepedia.Toast.ShowSample("Variant Captured", name, icon)
+  return CobysLinkepedia.Toast.ShowSample("Variant captured", name, icon)
 end
 
 Examples._test = {

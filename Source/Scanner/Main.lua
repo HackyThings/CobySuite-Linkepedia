@@ -396,6 +396,7 @@ loadResultFrame:SetScript("OnEvent", function(_, _, itemID, success)
     serverRefused[itemID] = true
   end
 end)
+Scanner.loadResultFrame = loadResultFrame   -- a seam: a development build times its event by name
 
 -------------------------------------------------------------------------------
 -- Speed helpers
@@ -833,6 +834,13 @@ local STEPS = {
   [STATE_COMPLETE]          = StepComplete,
 }
 
+-- The running scan's work for this frame, a named module function OnUpdate
+-- calls (a seam: a development build times it by state)
+function Scanner.Step()
+  local step = STEPS[state]
+  if step then step() end
+end
+
 local function OnUpdate(self, elapsed)
   if not scanActive then return end
 
@@ -861,8 +869,7 @@ local function OnUpdate(self, elapsed)
   end
   phaseActiveSeconds = phaseActiveSeconds + (elapsed or 0)
 
-  local step = STEPS[state]
-  if step then step() end
+  Scanner.Step()
 end
 
 -------------------------------------------------------------------------------
@@ -1326,10 +1333,13 @@ local function IdleTick()
   end
 end
 
+-- Through the module, so a development build can time each real tick (a seam)
+Scanner.IdleTick = IdleTick
+
 function Scanner.StartIdle()
   if idleTicker or held then return end
 
-  idleTicker = C_Timer.NewTicker(IDLE_TICK_SECONDS, IdleTick)
+  idleTicker = C_Timer.NewTicker(IDLE_TICK_SECONDS, function() Scanner.IdleTick() end)
 
   Debug.Log("SCAN", "Idle scanner started (%d item IDs a second)", Config.Get(Config.Options.IDLE_SCAN_RATE) or 5)
 end
@@ -1430,7 +1440,7 @@ function Scanner.CancelFindMax()
   if not findMaxJob then return false end
   findMaxFrame:SetScript("OnUpdate", nil)
   findMaxJob = nil
-  Debug.Log("SCAN", "FindMax cancelled")
+  Debug.Log("SCAN", "FindMax canceled")
   return true
 end
 
@@ -1482,7 +1492,7 @@ function Scanner.FindMaxItemID(arg)
 end
 
 -------------------------------------------------------------------------------
--- Performance probes (Search.RunPerformance): the scanner's own work, timed
+-- Performance probes (the Perf benchmarks): the scanner's own work, timed
 -- without starting a scan. Each runs the functions the scans run. The
 -- discover probe and the dead-list measure ask the server nothing and change
 -- nothing saved; the idle tick is a real tick (it asks the server and settles

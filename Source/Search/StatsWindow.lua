@@ -67,14 +67,14 @@ end)
 -------------------------------------------------------------------------------
 local METRICS = {
   {
-    label = "Coby's Linkepedia Memory",
+    label = "Coby's Linkepedia memory",
     getValue = function()
       return FormatKB(GetAddOnMemoryUsage(ADDON_NAME))
     end,
     tooltip = "Memory used by Coby's Linkepedia",
   },
   {
-    label = "All Addons Memory",
+    label = "All addons memory",
     getValue = function()
       local total = 0
       for i = 1, C_AddOns.GetNumAddOns() do
@@ -92,7 +92,7 @@ local METRICS = {
     tooltip = "Current frames per second",
   },
   {
-    label = "Home Latency",
+    label = "Home latency",
     getValue = function()
       local _, _, home = GetNetStats()
       return string.format("%.0f ms", home)
@@ -100,7 +100,7 @@ local METRICS = {
     tooltip = "Latency to home (game) server",
   },
   {
-    label = "World Latency",
+    label = "World latency",
     getValue = function()
       local _, _, _, world = GetNetStats()
       return string.format("%.0f ms", world)
@@ -108,7 +108,7 @@ local METRICS = {
     tooltip = "Latency to world server",
   },
   {
-    label = "Database Items",
+    label = "Database items",
     getValue = function()
       local count = CobysLinkepedia.Database.GetCount()
       return BreakUpLargeNumbers(count)
@@ -116,14 +116,14 @@ local METRICS = {
     tooltip = "Total items stored in the item database",
   },
   {
-    label = "Captured Variants",
+    label = "Captured variants",
     getValue = function()
       return BreakUpLargeNumbers(CapturedVariantCount())
     end,
     tooltip = "Distinct item variants captured from gameplay",
   },
   {
-    label = "Pending Items",
+    label = "Pending items",
     getValue = function()
       if COBYS_LINKEPEDIA_DB and COBYS_LINKEPEDIA_DB.scanState and COBYS_LINKEPEDIA_DB.scanState.pendingIDs then
         return BreakUpLargeNumbers(#COBYS_LINKEPEDIA_DB.scanState.pendingIDs)
@@ -133,7 +133,7 @@ local METRICS = {
     tooltip = "Items queued for retry in idle scan (not yet resolved from server)",
   },
   {
-    label = "Scan Active",
+    label = "Scan active",
     getValue = function()
       local status = CobysLinkepedia.Scanner.GetStatus()
       if status and status.isActive then
@@ -144,7 +144,7 @@ local METRICS = {
     tooltip = "Whether a scan is currently in progress",
   },
   {
-    label = "Debug Buffer",
+    label = "Debug buffer",
     getValue = function()
       local size = CobysLinkepedia.Debug.GetBufferSize()
       return string.format("%d / 5000", size)
@@ -152,12 +152,12 @@ local METRICS = {
     tooltip = "Entries held in the debug log",
   },
   {
-    label = "Loaded Addons",
+    label = "Loaded addons",
     getValue = AddonCountText,
     tooltip = "Loaded / total installed addons",
   },
   {
-    label = "Session Uptime",
+    label = "Session uptime",
     getValue = function()
       if not sessionStart then return "--" end
       return FormatUptime(GetTime() - sessionStart)
@@ -233,6 +233,12 @@ function Search.ToggleStatsWindow()
     return
   end
   CreateStatsWindow():Toggle()
+end
+
+-- The window once it is built (nil before): it saves no place, so "/lp reset
+-- windows" reaches it through this
+function Search.GetStatsWindow()
+  return statsWindow
 end
 
 EventUtil.ContinueOnPlayerLogin(function()

@@ -19,6 +19,7 @@ local base = CobySuite_CobysLinkepedia.Config.New({
     CAPTURE_TOAST_ENABLED  = "captureToastEnabled",
     MAX_RECENT_HISTORY     = "maxRecentHistory",
     SHIFT_HOVER_COMPARISON = "shiftHoverComparison",
+    VERSION_CHECK          = "versionCheck",   -- share the version with guild and group, a chat line when a newer one is out
   },
   defaults = {
     ["autocompleteEnabled"]   = true,
@@ -34,6 +35,7 @@ local base = CobySuite_CobysLinkepedia.Config.New({
     ["captureToastEnabled"]   = false,
     ["maxRecentHistory"]      = 50,
     ["shiftHoverComparison"]  = true,
+    ["versionCheck"]          = true,
   },
   validate = {
     ["autocompleteEnabled"]   = { type = "boolean" },
@@ -49,6 +51,7 @@ local base = CobySuite_CobysLinkepedia.Config.New({
     ["captureToastEnabled"]   = { type = "boolean" },
     ["maxRecentHistory"]      = { type = "number", min = 0, max = 200, integer = true },
     ["shiftHoverComparison"]  = { type = "boolean" },
+    ["versionCheck"]          = { type = "boolean" },
   },
   debug = CobysLinkepedia.Debug,
   onSet = function(name, old, value)

@@ -597,7 +597,7 @@ local function Build()
   ButtonFrameTemplate_HidePortrait(panel)
   panel.Inset:Hide()
   panel:SetWidth(SavedWidth())
-  panel:SetTitle(Utilities.WrapColor(Utilities.Colors.TEXT_TEAL, "Coby's Linkepedia") .. " Item Tokens")
+  panel:SetTitle(Utilities.WrapColor(Utilities.Colors.TEXT_TEAL, "Coby's Linkepedia") .. " item tokens")
   panel:EnableMouse(true)
   panel:Hide()
   -- Folding, not closing: the tab brings it back
@@ -650,7 +650,7 @@ local function Build()
   end)
 
   -- This macro
-  panel.TokenHeader = CreateSectionHeader(panel.Hint, -14, "This Macro")
+  panel.TokenHeader = CreateSectionHeader(panel.Hint, -14, "This macro")
   panel.TokenCount = panel:CreateFontString(nil, "OVERLAY", Utilities.Fonts.DATA)
   panel.TokenCount:SetPoint("RIGHT", panel, "RIGHT", -EDGE - 2, 0)
   panel.TokenCount:SetPoint("BOTTOM", panel.TokenHeader, "BOTTOM", 0, 0)
@@ -659,7 +659,7 @@ local function Build()
   CreateTokenList()
 
   -- Add an item
-  panel.FindHeader = CreateSectionHeader(panel.TokenBox, -12, "Add an Item")
+  panel.FindHeader = CreateSectionHeader(panel.TokenBox, -12, "Add an item")
   panel.FindHeader:ClearAllPoints()
   panel.FindHeader:SetPoint("TOPLEFT", panel.TokenBox, "BOTTOMLEFT", 2, -12)
   panel.SearchBox = CobySuite_CobysLinkepedia.UI.CreateSearchBox(panel, {

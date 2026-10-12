@@ -42,10 +42,11 @@ local function SavePosition()
   CobySuite_CobysLinkepedia.UI.SaveWindowState(frame, COBYS_LINKEPEDIA_WINDOW_STATE, "quickSearchBar")
 end
 
+local DEFAULT_PLACE = { point = "TOP", relPoint = "TOP", x = 0, y = -200 }
+
 local function RestorePosition()
   if not frame then return end
-  CobySuite_CobysLinkepedia.UI.RestoreWindowState(frame, COBYS_LINKEPEDIA_WINDOW_STATE, "quickSearchBar",
-    { point = "TOP", relPoint = "TOP", x = 0, y = -200 })
+  CobySuite_CobysLinkepedia.UI.RestoreWindowState(frame, COBYS_LINKEPEDIA_WINDOW_STATE, "quickSearchBar", DEFAULT_PLACE)
 end
 
 -- Frame height for n visible rows: the search box, then the rows below it
@@ -315,6 +316,15 @@ end
 function QuickSearch.EnsureFrame()
   if frame then return end
   CobySuite_CobysLinkepedia.Utilities.RunOutOfCombat(GetOrCreateFrame)
+end
+
+-- "/lp reset windows": the bar, when it is built, back at its default place
+-- (its saved place is cleared by the reset itself). Its height follows the
+-- rows it shows, so only the place moves.
+function QuickSearch.ResetPosition()
+  if not frame then return end
+  frame:ClearAllPoints()
+  frame:SetPoint(DEFAULT_PLACE.point, UIParent, DEFAULT_PLACE.relPoint, DEFAULT_PLACE.x, DEFAULT_PLACE.y)
 end
 
 function QuickSearch.Toggle()

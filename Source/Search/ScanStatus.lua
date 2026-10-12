@@ -116,7 +116,7 @@ function Search.InitScanStatus(window)
   local idleCB = CobySuite_CobysLinkepedia.UI.CreateCheckbox(f, {
     size       = 22,
     point      = { "RIGHT", cancelBtn, "LEFT", -6, 0 },
-    label      = "Idle Scan",
+    label      = "Idle scan",
     labelSide  = "left",
     labelGap   = 2,
     labelColor = Utilities.Colors.LABEL_GRAY,

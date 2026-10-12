@@ -1,6 +1,6 @@
 ## Interface: 120100
 ## Title: Coby's Linkepedia
-## Version: 2.0.4
+## Version: 2.0.5
 ## Author: Cobanyte
 ## Notes: Your personal item encyclopedia. Search, autocomplete and link any item in the game from a database the addon builds on your own client, with no addon update needed after a patch.
 ## IconTexture: Interface\Icons\INV_Misc_Book_09
@@ -17,6 +17,7 @@ Libs\CobySuite\Source\Utilities\Main.lua
 Libs\CobySuite\Source\Utilities\Data.lua
 Libs\CobySuite\Source\Utilities\ItemLoad.lua
 Libs\CobySuite\Source\Chat\Main.lua
+Libs\CobySuite\Source\Chat\VersionCheck.lua
 Libs\CobySuite\Source\Slash\Main.lua
 Libs\CobySuite\Source\Config\Main.lua
 Libs\CobySuite\Source\UI\Factories.lua
@@ -27,6 +28,8 @@ Libs\CobySuite\Source\UI\TableHeader.lua
 Libs\CobySuite\Source\UI\Toast.lua
 Libs\CobySuite\Source\UI\Launcher.lua
 Libs\CobySuite\Source\UI\Guide.lua
+Libs\CobySuite\Source\UI\AddonCatalog.lua
+Libs\CobySuite\Source\UI\Addons.lua
 Libs\CobySuite\Source\Debug\Logger.lua
 Libs\CobySuite\Source\Debug\Window.lua
 

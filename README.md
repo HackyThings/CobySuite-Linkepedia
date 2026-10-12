@@ -32,6 +32,7 @@ Upgrading from Linkepedia 1.5.0? Delete the old `Linkepedia` folder; the new add
 /lp settings - Open or close the settings window
 /lp guide - Open or close the feature guide
 /lp changelog - Open or close the changelog: what changed in each version
+/lp addons - Every addon by Cobanyte, with CurseForge links and pictures (also /lp other, /lp more)
 /lp debug - Open or close the debug log window
 /lp build - Build the item database from scratch (asks first when it already has items)
 /lp expand - Add the items the database lacks, or finish a stopped scan
@@ -43,6 +44,7 @@ Upgrading from Linkepedia 1.5.0? Delete the old `Linkepedia` folder; the new add
 /lp stats - Open or close the live performance stats window
 /lp set <key> <value> - Change a setting by key; alone, lists every key and value
 /lp reset - Delete the item database (asks first); settings, favorites, history and saved variants stay
+/lp reset windows - Put every window back to its default place and size
 /lp recipes [cancel] - Index the recipes the Variant Builder uses; cancel stops it
 /lp variant [itemID] - Open the Variant Builder, optionally on an item ID
 /lp findmax [cancel] - Find the highest item ID the game knows; cancel stops it
@@ -57,7 +59,7 @@ A bare `/lp` opens the search window. `/linkepedia` and `/cobyslinkepedia` work 
 
 GPL-2.0. See [LICENSE](LICENSE).
 
-## Issues / Feedback
+## Issues / feedback
 
 Found a bug? Run `/lp debug`, press **Copy Last 250** and send the text with a line about what you were doing. The log holds the addon version, your WoW build and your settings.
 

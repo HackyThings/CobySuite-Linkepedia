@@ -92,7 +92,7 @@ Guide.SECTIONS = {
     body = T.Bullets({
       "The idle scan retries items a scan could not load and pauses in combat. Set its speed in Settings > Item database.",
       "Variants, such as crafted ranks, are captured as you play: bags, worn gear, loot, trades, mail and links others post.",
-      "After a game patch, a dialog offers " .. T.Key("Expand") .. ", so new items arrive without an addon update.",
+      "After a game patch, a dialog offers " .. T.Key("Check Now") .. ", so new items arrive without an addon update.",
       "IDs the server refuses, or never answers in two scans, are skipped until the next patch.",
     }),
     buttons = { EXPAND_BUTTON },
@@ -198,18 +198,21 @@ Guide.SECTIONS = {
     summary = "The settings window, key bindings and every command",
     body = T.Bullets({
       "Five pages: Autocomplete, Linking, Item database, Search window, and Minimap and chat.",
-      "Examples show what a choice does. Changes wait for " .. T.Key("Apply") .. "; " .. T.Key("Undo edits") .. " drops them, " .. T.Key("Defaults") .. " restores every setting.",
+      "Examples show what a choice does. Changes wait for " .. T.Key("Apply") .. "; " .. T.Key("Undo Edits") .. " drops them, and " .. T.Key("Defaults") .. " selects the default values for you to review before Apply.",
       "Right-click the minimap button to open it too.",
-      "Set keys under Options > Keybindings > AddOns: Toggle Search Window and Toggle Quick Search.",
+      "Set keys under Options > Keybindings > AddOns: Toggle search window and Toggle quick search.",
     }),
     try = {
       { "/lp settings", "Open the settings window" },
       { "/lp help", "List every command" },
       { "/lp guide", "Open or close this guide" },
       { "/lp changelog", "What changed in each version" },
+      { "/lp reset windows", "Put every window back to its default place and size" },
     },
   },
 }
+-- The last section in every addon's guide: the list of every addon by Cobanyte
+Guide.SECTIONS[#Guide.SECTIONS + 1] = CobySuite_CobysLinkepedia.UI.AddonsGuideSection(CobysLinkepedia.AddonsList)
 
 local window = CobySuite_CobysLinkepedia.UI.CreateGuideWindow({
   name = "CobysLinkepediaGuideWindow",

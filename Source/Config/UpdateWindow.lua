@@ -29,7 +29,7 @@ function Config.ShowPatchDialog()
   local popup = Utilities.CreateDialogPopup({
     name = "CobysLinkepediaPatchDialog",
     icon = CobysLinkepedia.ICON,
-    title = "WoW Updated",
+    title = "WoW updated",
     width = 380,
     body = "WoW has been updated. Check for the items it added?\n" ..
       "Your database is kept; only new item IDs are scanned.",

@@ -204,6 +204,7 @@ local sweepSettled = CobySuite_CobysLinkepedia.Utilities.Debounce(0.1, Sweep)
 -- Event registration
 -------------------------------------------------------------------------------
 local captureFrame = CreateFrame("Frame")
+Capture.frame = captureFrame   -- a seam: a development build times its events by name
 local registered = false
 
 function Capture.RegisterEvents()

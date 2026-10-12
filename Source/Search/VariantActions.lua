@@ -243,7 +243,7 @@ function Search.ShowVariantMenu(anchor, entry)
         Variants.SetFavorite(saved.id, not saved.favorite)
       end)
     else
-      root:CreateButton("Save variant", function()
+      root:CreateButton("Save Variant", function()
         local id, reason = Search.EnsureVariantSaved(entry)
         if id then
           Utilities.Message(("Saved as variant %d: %s links it in chat and macros."):format(id, Linkify.FormatVariantToken(id)))
@@ -251,7 +251,7 @@ function Search.ShowVariantMenu(anchor, entry)
           Utilities.Message.Warn(reason)
         end
       end)
-      root:CreateButton("Save and add to Favorites", function()
+      root:CreateButton("Save and Add to Favorites", function()
         local id, reason = Search.EnsureVariantSaved(entry)
         if id then
           Variants.SetFavorite(id, true)
@@ -265,7 +265,7 @@ function Search.ShowVariantMenu(anchor, entry)
     root:CreateButton("Link in Chat", function() LinkToChat(entry) end)
     -- The token needs a saved variant, so sending it saves one. Macros get it
     -- from the builder's Add to Macro, a click the macro window allows.
-    root:CreateButton("Send variant token to chat", function()
+    root:CreateButton("Send Variant Token to Chat", function()
       local id, reason = Search.EnsureVariantSaved(entry)
       if id then
         Search.PutInChat(Linkify.FormatVariantToken(id))
@@ -276,7 +276,7 @@ function Search.ShowVariantMenu(anchor, entry)
 
     if saved then
       root:CreateDivider()
-      root:CreateButton("Delete saved variant", function()
+      root:CreateButton("Delete Saved Variant", function()
         Search.DeleteSavedVariant(saved.id)
       end)
     end

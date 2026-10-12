@@ -59,8 +59,8 @@ CobysLinkepedia.version = VERSION
 -- addon folder.
 -------------------------------------------------------------------------------
 BINDING_HEADER_COBYSLINKEPEDIA = "Coby's Linkepedia"
-BINDING_NAME_COBYSLINKEPEDIA_TOGGLE_SEARCH = "Toggle Search Window"
-BINDING_NAME_COBYSLINKEPEDIA_TOGGLE_QUICKSEARCH = "Toggle Quick Search"
+BINDING_NAME_COBYSLINKEPEDIA_TOGGLE_SEARCH = "Toggle search window"
+BINDING_NAME_COBYSLINKEPEDIA_TOGGLE_QUICKSEARCH = "Toggle quick search"
 
 function CobysLinkepedia_ToggleSearch()
   if CobysLinkepedia.Search.ToggleWindow then
@@ -97,8 +97,8 @@ end
 
 -------------------------------------------------------------------------------
 -- Slash command registration and routing (CobySuite.Slash.Register)
--- The suite's standard commands (show, settings, guide, changelog, debug,
--- test) come from CobySuite.Slash.StandardCommands, Linkepedia's own go in
+-- The suite's standard commands (show, settings, guide, changelog, addons,
+-- debug, test) come from CobySuite.Slash.StandardCommands, Linkepedia's own go in
 -- extra; "help" and "version" come from the registrar, and onEmpty makes a
 -- bare /lp run show (the suite's standard). Core.lua loads before every module it names, so each
 -- handler resolves its module per call.
@@ -113,6 +113,36 @@ local function ToggleSearch()
   end
 end
 
+-- "/lp addons" and the guide's last section: every addon by Cobanyte
+-- (CobySuite.UI.ToggleAddonsWindow, the same list in each addon)
+CobysLinkepedia.AddonsList = {
+  host = "CobysLinkepedia", slash = "/lp", icon = CobysLinkepedia.ICON,
+  message = Msg,
+  -- the list remembers its size and where it was left
+  state = function() return COBYS_LINKEPEDIA_WINDOW_STATE end,
+}
+
+-- "/lp reset windows": every window of the addon back at its default place
+-- and size (CobySuite.UI.ResetWindows). Each window that saves into the
+-- window-state table (search, settings, guide, changelog, status, debug, the
+-- addons list) is found through it. The stats window saves nothing, so it is
+-- listed here; the quick search bar is a plain frame, so onReset re-places it.
+-- (The development test dashboard is the library's: /cobysuite reset windows.)
+CobysLinkepedia.WindowsReset = {
+  host = "CobysLinkepedia", title = "Coby's Linkepedia", icon = CobysLinkepedia.ICON,
+  message = Msg,
+  states = { function() return COBYS_LINKEPEDIA_WINDOW_STATE end },
+  windows = function()
+    local stats = CobysLinkepedia.Search.GetStatsWindow and CobysLinkepedia.Search.GetStatsWindow()
+    return { stats }
+  end,
+  onReset = function()
+    if CobysLinkepedia.QuickSearch.ResetPosition then
+      CobysLinkepedia.QuickSearch.ResetPosition()
+    end
+  end,
+}
+
 -- Kept on the addon table so development checks can read the help lines
 -- (CobySuite.Slash.HelpLines) without printing them
 CobysLinkepedia.SlashOptions = {
@@ -126,6 +156,14 @@ CobysLinkepedia.SlashOptions = {
   commands = CobySuite_CobysLinkepedia.Slash.StandardCommands({
     show = ToggleSearch,
     showHelp = "Open or close the search window",
+    addons = CobysLinkepedia.AddonsList,
+    resetWindows = CobysLinkepedia.WindowsReset,
+    -- a bare "/lp reset" is Linkepedia's older command: delete the item database
+    resetBare = function()
+      if CobysLinkepedia.Database.ShowResetConfirmation then
+        CobysLinkepedia.Database.ShowResetConfirmation()
+      end
+    end,
     settings = function()
       if CobysLinkepedia.Config.ToggleSettings then
         CobysLinkepedia.Config.ToggleSettings()
@@ -202,12 +240,8 @@ CobysLinkepedia.SlashOptions = {
             CobysLinkepedia.Config.HandleSetCommand(rest)
           end
         end },
-      { name = "reset", help = "Delete the item database (asks first); settings, favorites, history and saved variants stay",
-        run = function()
-          if CobysLinkepedia.Database.ShowResetConfirmation then
-            CobysLinkepedia.Database.ShowResetConfirmation()
-          end
-        end },
+      -- help line only: a bare "reset" is the standard reset entry's resetBare
+      { usage = "reset", help = "Delete the item database (asks first); settings, favorites, history and saved variants stay" },
       { name = "recipes", usage = "recipes [cancel]", help = "Index the recipes the Variant Builder uses; cancel stops it",
         run = function(rest)
           CobysLinkepedia.Scanner.RecipeScanCommand(rest and rest:match("^%s*(%S+)"))
@@ -221,12 +255,6 @@ CobysLinkepedia.SlashOptions = {
           if CobysLinkepedia.Scanner.FindMaxItemID then
             CobysLinkepedia.Scanner.FindMaxItemID(rest and rest:match("^%s*(%S+)"))
           end
-        end },
-      -- Development only: a build without the test files has no such command
-      { name = "perf", help = "Open the test window and run the performance measurement (Run Perf); the report opens for copying",
-        available = function() return CobysLinkepedia.Tests ~= nil end,
-        run = function()
-          CobysLinkepedia.Tests.RunPerformance()
         end },
     },
   }),
@@ -306,7 +334,11 @@ end
 -- frame
 local svCorrupt = false
 
-EventUtil.ContinueOnAddOnLoaded(ADDON_NAME, function()
+-- The two once-only handlers, named module functions the callbacks below call
+-- (a seam: a development build times each of them in its load phases)
+CobysLinkepedia.Startup = {}
+
+function CobysLinkepedia.Startup.OnAddonLoaded()
   local Database = CobysLinkepedia.Database
 
   -- One protected boundary around everything that reads the item
@@ -338,9 +370,9 @@ EventUtil.ContinueOnAddOnLoaded(ADDON_NAME, function()
   end
 
   CobysLinkepedia.Debug.Log("INIT", "CobysLinkepedia v%s loaded", VERSION)
-end)
+end
 
-EventUtil.ContinueOnPlayerLogin(function()
+function CobysLinkepedia.Startup.OnLogin()
   if svCorrupt and CobysLinkepedia.Database.ShowCorruptDialog then
     CobysLinkepedia.Database.ShowCorruptDialog()
   end
@@ -412,7 +444,7 @@ EventUtil.ContinueOnPlayerLogin(function()
   end
 
   -- Unfinished scan: a Build or Expand started and never reached its end
-  -- (cancelled, or cut off by a reload or logout). Expand continues it
+  -- (canceled, or cut off by a reload or logout). Expand continues it
   -- without losing what is stored; Build would wipe it. A database that
   -- was never scanned has no flag and gets no notice.
   local scanState = COBYS_LINKEPEDIA_DB and COBYS_LINKEPEDIA_DB.scanState
@@ -425,13 +457,23 @@ EventUtil.ContinueOnPlayerLogin(function()
 
   -- A fresh install opens the guide; an update, the changelog
   if CobysLinkepedia.WhatsNew then CobysLinkepedia.WhatsNew.OnLogin() end
+  -- The suite's version check: a chat line when a newer release is out
+  CobySuite_CobysLinkepedia.VersionCheck.Register({
+    key = "LP", addon = ADDON_NAME, title = "Coby's Linkepedia", color = CobysLinkepedia.Utilities.Colors.BRAND_TEAL,
+    enabled = function() return CobysLinkepedia.Config.Get(CobysLinkepedia.Config.Options.VERSION_CHECK) end,
+    log = function(fmt, ...) CobysLinkepedia.Debug.Log("INIT", fmt, ...) end,
+  })
 
   CobysLinkepedia.Debug.Log("INIT", "PLAYER_LOGIN complete")
-end)
+end
+
+EventUtil.ContinueOnAddOnLoaded(ADDON_NAME, function() CobysLinkepedia.Startup.OnAddonLoaded() end)
+EventUtil.ContinueOnPlayerLogin(function() CobysLinkepedia.Startup.OnLogin() end)
 
 local worldFrame = CreateFrame("Frame")
 worldFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
 worldFrame:RegisterEvent("PLAYER_LOGOUT")
+CobysLinkepedia.eventFrame = worldFrame   -- a seam: a development build times its events by name
 
 worldFrame:SetScript("OnEvent", function(_, event, arg1, ...)
   if event == "PLAYER_ENTERING_WORLD" then

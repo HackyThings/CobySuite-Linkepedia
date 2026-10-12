@@ -126,8 +126,9 @@ function Autocomplete.IsExcludedText(text)
 end
 
 -- Re-reads the draft after its text or caret moved, and updates, starts or
--- ends the session to match
-local function Evaluate(editBox)
+-- ends the session to match. A named module function the hooks call through
+-- the table (a seam: a development build times it on every keystroke)
+function Autocomplete.Evaluate(editBox)
   if not Enabled() then
     if session then Autocomplete.Cancel() end
     return
@@ -309,7 +310,7 @@ local function HookEditBox(editBox)
 
   editBox:HookScript("OnTextChanged", function(self, userInput)
     if userInput then
-      Evaluate(self)
+      Autocomplete.Evaluate(self)
     elseif session and session.editBox == self then
       -- A programmatic change (Blizzard's chat-type switch, another addon)
       Autocomplete.Cancel()
@@ -319,7 +320,7 @@ local function HookEditBox(editBox)
   -- Arrow keys and clicks move the caret without changing the text
   editBox:HookScript("OnCursorChanged", function(self)
     if session and session.editBox == self and self:GetCursorPosition() ~= session.cursor then
-      Evaluate(self)
+      Autocomplete.Evaluate(self)
     end
   end)
 
