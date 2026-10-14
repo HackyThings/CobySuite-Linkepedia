@@ -30,7 +30,6 @@ local Variants = CobysLinkepedia.Variants
 local Database = CobysLinkepedia.Database
 local Linkify = CobysLinkepedia.Linkify
 
-local floor = math.floor
 local strfind = string.find
 
 local CAP = 500
@@ -86,8 +85,10 @@ local function Fire(id, itemID, change)
   CobysLinkepedia.EventBus:Fire(CobysLinkepedia.Events.SavedVariantsChanged, id, itemID, change)
 end
 
+-- A whole number from 1, never NaN or infinity (both pass a plain range
+-- check in the client)
 local function IsID(value)
-  return type(value) == "number" and value >= 1 and value == floor(value)
+  return CobySuite_CobysLinkepedia.Utilities.IsWholeNumber(value, 1)
 end
 
 -- Fills kind, ilvl, rank and track from the link where meta did not give them

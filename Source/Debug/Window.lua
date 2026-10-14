@@ -6,8 +6,7 @@
 
 CobysLinkepedia.DebugWindow = CobySuite_CobysLinkepedia.Debug.NewWindow({
   windowName = "CobysLinkepediaDebugWindow",
-  -- The brand teal (Utilities.Colors.TEXT_TEAL, whose file loads after this one)
-  title = CobySuite_CobysLinkepedia.Utilities.WrapColor("00CED1", "Coby's Linkepedia") .. " debug log",
+  title = CobySuite_CobysLinkepedia.Utilities.WrapColor(CobysLinkepedia.BRAND_COLOR, "Coby's Linkepedia") .. " debug log",
   icon = CobysLinkepedia.ICON,
   logger = CobysLinkepedia.Debug,
   -- Position and size, kept like the other windows' (the table exists by

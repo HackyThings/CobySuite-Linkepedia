@@ -76,9 +76,9 @@ do
     for q = 0, QUALITY_MAX do
       local count = current and current.qualityCounts[q] or 0
       local name = Utilities.QualityNames[q] or ("Quality " .. q)
-      -- the tiles take { r, g, b }; the game's quality colors are r/g/b fields
-      local qc = ITEM_QUALITY_COLORS[q]
-      local color = qc and { qc.r, qc.g, qc.b } or nil
+      -- the tiles take { r, g, b }
+      local r, g, b = Utilities.QualityColor(q, false)
+      local color = r and { r, g, b } or nil
       tiles[#tiles + 1] = {
         key = "quality" .. q,
         value = BreakUpLargeNumbers(count),

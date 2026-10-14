@@ -266,11 +266,8 @@ function Autocomplete.ShowDropdown(editBox, results, revision)
       local icon = select(5, C_Item.GetItemInfoInstant(item.itemID))
       row.Icon:SetTexture(icon or "Interface\\Icons\\INV_Misc_QuestionMark")
 
-      local qualityColor = ITEM_QUALITY_COLORS[item.quality or 1]
       row.Name:SetText(CobysLinkepedia.Search.NameWithHint(item.name, hints[i]))
-      if qualityColor then
-        row.Name:SetTextColor(qualityColor.r, qualityColor.g, qualityColor.b)
-      end
+      CobySuite_CobysLinkepedia.UI.SetQualityColor(row.Name, item.quality or 1, false)
 
       -- A plain count of captured variants. The row stands for the base
       -- item: its tooltip and the link a selection inserts are the base

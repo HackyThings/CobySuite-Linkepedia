@@ -28,12 +28,8 @@ local DRAFT_H = 22
 Examples.AUTOCOMPLETE_HEIGHT = DRAFT_H + Examples.MAX_ROWS * ROW_H + 8
 local QUESTION_MARK = "Interface\\Icons\\INV_Misc_QuestionMark"
 
-local function Hex(color)
-  return ("%02x%02x%02x"):format(color[1] * 255, color[2] * 255, color[3] * 255)
-end
-
 local function Grey(text)
-  return "|cff" .. Hex(Utilities.Colors.LABEL_GRAY) .. text .. "|r"
+  return Utilities.WrapColor(Utilities.Colors.LABEL_GRAY, text)
 end
 
 local function Scanning()
@@ -92,8 +88,7 @@ local function SetRows(box, results, shown)
       local icon = select(5, C_Item.GetItemInfoInstant(item.itemID))
       row.Icon:SetTexture(icon or QUESTION_MARK)
       row.Name:SetText(CobysLinkepedia.Search.NameWithHint(item.name, hints[i]))
-      local color = ITEM_QUALITY_COLORS[item.quality or 1]
-      if color then row.Name:SetTextColor(color.r, color.g, color.b) end
+      CobySuite_CobysLinkepedia.UI.SetQualityColor(row.Name, item.quality or 1, false)
     end
   end
 end

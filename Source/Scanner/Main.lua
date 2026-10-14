@@ -757,9 +757,8 @@ local function StepComplete()
   expandKnownIDs = nil
   scanFrame:SetScript("OnUpdate", nil)
 
-  local elapsed = Now() - startTime
-  local minutes = math.floor(elapsed / 60)
-  local seconds = math.floor(elapsed % 60)
+  -- "9s", "4m 12s", "1h 1m 2s"
+  local took = CobysLinkepedia.Utilities.FormatDuration(Now() - startTime)
 
   -- Where every valid ID of this pass ended up: stored, dead (unanswered
   -- for the second complete scan running, or refused), deferred to the idle
@@ -815,11 +814,11 @@ local function StepComplete()
 
   ReleaseScanTables()
 
-  Debug.State("SCAN", "Scan complete: %d items found in %dm %ds", itemsFound, minutes, seconds)
+  Debug.State("SCAN", "Scan complete: %d items found in %s", itemsFound, took)
   CobysLinkepedia.EventBus:Fire(CobysLinkepedia.Events.ScanComplete, itemsFound)
   CobysLinkepedia.EventBus:Fire(CobysLinkepedia.Events.DatabaseUpdated)
 
-  CobysLinkepedia.Utilities.Message.Success(string.format("Scan complete! Found %s items in %dm %ds.", BreakUpLargeNumbers(itemsFound), minutes, seconds), "normal")
+  CobysLinkepedia.Utilities.Message.Success(string.format("Scan complete! Found %s items in %s.", BreakUpLargeNumbers(itemsFound), took), "normal")
 end
 
 local STEPS = {

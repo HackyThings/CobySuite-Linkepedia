@@ -15,6 +15,17 @@
 -------------------------------------------------------------------------------
 CobysLinkepedia.Data.Changelog = {
   {
+    version = "2.0.6",
+    title = "Patch 12.1.5 and smaller touches",
+    date = "2026-10-13",
+    changed = {
+      "Updated for patch 12.1.5",
+      "Item browser: Shift and Ctrl clicks follow the game's chat-link and dressing-room bindings",
+      "Statistics window: remembers where it was placed",
+      "Scan times: read like 9s and 1h 1m 2s",
+    },
+  },
+  {
     version = "2.0.5",
     title = "Reset windows, more addons and a version notice",
     date = "2026-10-11",

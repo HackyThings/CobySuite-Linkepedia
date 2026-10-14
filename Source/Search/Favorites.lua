@@ -2,7 +2,6 @@
 -- them with favorited saved variants under their item
 
 local Search = CobysLinkepedia.Search
-local Utilities = CobysLinkepedia.Utilities
 local Debug = CobysLinkepedia.Debug
 
 -------------------------------------------------------------------------------
@@ -46,11 +45,8 @@ function Search.InitFavorites(window)
 
   local list = Search.CreateItemList(f, { top = -4, indentVariants = true })
 
-  f.EmptyText = f:CreateFontString(nil, "OVERLAY", Utilities.Fonts.BODY)
-  f.EmptyText:SetPoint("CENTER")
+  f.EmptyText = CobySuite_CobysLinkepedia.UI.CreateEmptyLabel(f, { point = { "CENTER" }, width = 420 })
   f.EmptyText:SetText("No favorites yet.\nRight-click any item or variant to add it to favorites.")
-  f.EmptyText:SetTextColor(unpack(Utilities.Colors.DISABLED_GRAY))
-  f.EmptyText:SetJustifyH("CENTER")
 
   function f:RefreshFavorites()
     local itemIDs, seen = {}, {}

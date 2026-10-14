@@ -155,7 +155,7 @@ Guide.SECTIONS = {
       "Open it from the minimap button, the addon compartment, a key binding or " .. T.Key("/lp") .. ".",
       "Type to filter; the dropdowns narrow by quality, type and expansion. Every column sorts and resizes.",
       "Click an item for its ID, link and Wowhead URL. The link and URL have copy icons.",
-      "Shift-click links an item, Ctrl-click tries it on, right-click opens a menu.",
+      "Your chat-link click (Shift-click unless you changed it) links an item, your dressing-room click (Ctrl-click) tries it on, right-click opens a menu.",
       "The tabs hold " .. T.Block("Variants") .. ", " .. T.Block("Favorites") .. ", " .. T.Block("History") .. " and " .. T.Block("Stats") .. ".",
     }),
     try = {
@@ -216,7 +216,7 @@ Guide.SECTIONS[#Guide.SECTIONS + 1] = CobySuite_CobysLinkepedia.UI.AddonsGuideSe
 
 local window = CobySuite_CobysLinkepedia.UI.CreateGuideWindow({
   name = "CobysLinkepediaGuideWindow",
-  title = CobysLinkepedia.Utilities.WrapColor(CobysLinkepedia.Utilities.Colors.TEXT_TEAL, "Coby's Linkepedia") .. " Guide",
+  title = CobysLinkepedia.Utilities.WrapColor(CobysLinkepedia.BRAND_COLOR, "Coby's Linkepedia") .. " Guide",
   icon = CobysLinkepedia.ICON,
   intro = "New here? Start with the first section. Click any heading to open or close it.",
   footer = "Open this guide any time with " .. U.WrapColor(U.Colors.HELP_COMMAND, "/lp guide"),

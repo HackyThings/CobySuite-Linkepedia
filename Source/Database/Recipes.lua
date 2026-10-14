@@ -28,8 +28,10 @@ local function Recipes()
   return recipes
 end
 
+-- A whole number from 1, never NaN or infinity (both pass a plain range
+-- check in the client)
 local function IsID(value)
-  return type(value) == "number" and value >= 1 and value == math.floor(value)
+  return CobySuite_CobysLinkepedia.Utilities.IsWholeNumber(value, 1)
 end
 
 -- Drops entries that are not an item ID mapped to recipe IDs. Database.Load

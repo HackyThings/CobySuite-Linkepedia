@@ -37,7 +37,7 @@ local Config = CobysLinkepedia.Config
 local Utilities = CobysLinkepedia.Utilities
 local Debug = CobysLinkepedia.Debug
 
-local strfind, strsub, strmatch = string.find, string.sub, string.match
+local strfind, strsub = string.find, string.sub
 
 local MAX_MACRO_CHARS = 255
 local PENDING_SECONDS = 3
@@ -447,7 +447,7 @@ local function OnInsertLink(link)
   if type(link) ~= "string" or not strfind(link, "item:", 1, true) then return end
   if not Config.Get(Config.Options.EXPAND_ITEM_TOKENS) then return end
 
-  local itemID = tonumber(strmatch(link, "item:(%d+)"))
+  local itemID = CobySuite_CobysLinkepedia.Utilities.IDFromLink(link)
   local index, text, cursor = MacroTokens.GetEditTarget()
   if not itemID or not index then return end
 

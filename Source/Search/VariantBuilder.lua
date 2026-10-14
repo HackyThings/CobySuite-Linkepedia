@@ -221,8 +221,8 @@ end
 -- A quality's name in its colour
 local function QualityText(quality)
   local name = Variants.QualityName(quality)
-  local color = ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[quality]
-  return color and color.hex and (color.hex .. name .. "|r") or name
+  local hex = Utilities.QualityHex(quality, false)
+  return hex and Utilities.WrapColor(hex, name) or name
 end
 
 local function DefaultMode()
@@ -547,8 +547,7 @@ local function RefreshHeader()
   local _, _, itemSubType, equipLoc, icon = C_Item.GetItemInfoInstant(state.itemID)
   frame.Icon:SetTexture(icon or QUESTION_MARK)
   frame.ItemName:SetText(item.name)
-  local qc = ITEM_QUALITY_COLORS[item.quality or 1]
-  if qc then frame.ItemName:SetTextColor(qc.r, qc.g, qc.b) end
+  CobySuite_CobysLinkepedia.UI.SetQualityColor(frame.ItemName, item.quality or 1, false)
 
   local parts = { "Item " .. state.itemID }
   local slot = equipLoc and equipLoc ~= "" and _G[equipLoc]
@@ -809,8 +808,7 @@ local function ShowPicked(matches)
       row.Icon:SetTexture(select(5, C_Item.GetItemInfoInstant(item.itemID)) or QUESTION_MARK)
       row.Name:SetText(item.name)
       row.Tag:SetText(crafted[item.itemID] and "crafted" or "")
-      local qc = ITEM_QUALITY_COLORS[item.quality or 1]
-      if qc then row.Name:SetTextColor(qc.r, qc.g, qc.b) end
+      CobySuite_CobysLinkepedia.UI.SetQualityColor(row.Name, item.quality or 1, false)
       row:Show()
       if found == #rows then break end
     end

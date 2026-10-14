@@ -54,12 +54,10 @@ local base = CobySuite_CobysLinkepedia.Config.New({
     ["versionCheck"]          = { type = "boolean" },
   },
   debug = CobysLinkepedia.Debug,
-  onSet = function(name, old, value)
-    CobysLinkepedia.EventBus:Fire(CobysLinkepedia.Events.ConfigChanged, name, value, old)
-  end,
-  onReset = function()
-    CobysLinkepedia.EventBus:Fire(CobysLinkepedia.Events.ConfigChanged)
-  end,
+  -- ConfigChanged (name, newValue, oldValue) on every Set, and alone on a Reset
+  bus = CobysLinkepedia.EventBus,
+  event = CobysLinkepedia.Events.ConfigChanged,
+  ensureTables = { "COBYS_LINKEPEDIA_WINDOW_STATE" },
 })
 
 Config.Options        = base.Options
@@ -78,7 +76,7 @@ function Config.InitializeData()
 
   if type(COBYS_LINKEPEDIA_STATE) ~= "table" then
     COBYS_LINKEPEDIA_STATE = {
-      version = CobysLinkepedia.version,
+      version = CobysLinkepedia.VERSION,
       interfaceVersion = select(4, GetBuildInfo()),
       firstInstall = true,
       favorites = {},
@@ -90,12 +88,9 @@ function Config.InitializeData()
     if type(COBYS_LINKEPEDIA_STATE.favorites) ~= "table" then COBYS_LINKEPEDIA_STATE.favorites = {} end
     if type(COBYS_LINKEPEDIA_STATE.history) ~= "table" then COBYS_LINKEPEDIA_STATE.history = {} end
   end
-  -- Saved variants repair their own records (Variants/Store.lua)
+  -- Saved variants repair their own records (Variants/Store.lua); the
+  -- window-state table is the base's ensureTables
   CobysLinkepedia.Variants.ValidateSaved()
-
-  if type(COBYS_LINKEPEDIA_WINDOW_STATE) ~= "table" then
-    COBYS_LINKEPEDIA_WINDOW_STATE = {}
-  end
 
   -- Initialize COBYS_LINKEPEDIA_DB. Its layout belongs to Database; only
   -- scanState is shared (Scanner, Core).

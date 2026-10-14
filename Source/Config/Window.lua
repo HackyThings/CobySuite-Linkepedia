@@ -52,7 +52,7 @@ end
 
 local window = UI.CreateSettingsWindow({
   name = "CobysLinkepediaConfigWindow",
-  title = Utilities.WrapColor(Utilities.Colors.TEXT_TEAL, "Coby's Linkepedia") .. " Settings",
+  title = Utilities.WrapColor(CobysLinkepedia.BRAND_COLOR, "Coby's Linkepedia") .. " Settings",
   icon = CobysLinkepedia.ICON,
   config = Config,
   size = "standard",
@@ -256,8 +256,8 @@ local window = UI.CreateSettingsWindow({
 EventUtil.ContinueOnAddOnLoaded("CobysLinkepedia", function()
   UI.RegisterSettingsCategory({
     name        = "Coby's Linkepedia",
-    brandColor  = Utilities.Colors.TEXT_TEAL,
-    version     = CobysLinkepedia.version,
+    brandColor  = CobysLinkepedia.BRAND_COLOR,
+    version     = CobysLinkepedia.VERSION,
     description = {
       "Your personal item encyclopedia. Search, autocomplete and link any item in the game from a database the addon builds on your own client, with no addon update needed after a patch.",
       "The settings live in the addon's own settings window.",

@@ -181,16 +181,22 @@ local function CreateStatsWindow()
   local numMetrics = #METRICS
   local winH = numMetrics * ROW_H + 50
 
-  -- Shell: draggable, position not persisted. No solid background: the
-  -- window has always shown the template art alone.
+  -- Shell: draggable, its place saved with the other windows' (the screen's
+  -- center until it is moved). No solid background: the window has always
+  -- shown the template art alone.
   local f = CobySuite_CobysLinkepedia.UI.CreateWindow({
     name = "CobysLinkepediaStatsWindow",
-    title = Utilities.WrapColor(Utilities.Colors.TEXT_TEAL, "Coby's Linkepedia") .. " Stats",
+    title = Utilities.WrapColor(CobysLinkepedia.BRAND_COLOR, "Coby's Linkepedia") .. " Stats",
     icon = CobysLinkepedia.ICON,
     width = 340,
     height = winH,
     solidBackground = false,
     escapeCloses = true,
+    persist = {
+      svTable = function() return COBYS_LINKEPEDIA_WINDOW_STATE end,
+      key = "statsWindow",
+      fixedSize = true,
+    },
   })
 
   f._memTimer = 0
@@ -235,8 +241,7 @@ function Search.ToggleStatsWindow()
   CreateStatsWindow():Toggle()
 end
 
--- The window once it is built (nil before): it saves no place, so "/lp reset
--- windows" reaches it through this
+-- The window once it is built (nil before)
 function Search.GetStatsWindow()
   return statsWindow
 end

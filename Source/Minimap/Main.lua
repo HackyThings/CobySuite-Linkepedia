@@ -17,7 +17,7 @@ local launcher = CobySuite_CobysLinkepedia.UI.CreateLauncher({
   tooltip       = function()
     local count = CobysLinkepedia.Database.GetCount and CobysLinkepedia.Database.GetCount() or 0
     return CobySuite_CobysLinkepedia.UI.LauncherTooltip({
-      title = "Coby's Linkepedia", brandColor = Utilities.Colors.TEXT_TEAL, icon = CobysLinkepedia.ICON,
+      title = "Coby's Linkepedia", brandColor = CobysLinkepedia.BRAND_COLOR, icon = CobysLinkepedia.ICON,
       status = "Items: " .. BreakUpLargeNumbers(count),
       leftClick = "Open search window", rightClick = "Open settings",
     })

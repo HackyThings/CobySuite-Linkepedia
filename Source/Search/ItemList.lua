@@ -85,8 +85,7 @@ local function InitRow(row, entry, list)
     if markup ~= "" then text = markup .. " " .. text end
     row.Text:SetText(text)
     -- The variant's own quality: a track rank or crafted quality can change it
-    local qc = ITEM_QUALITY_COLORS[Search.VariantQuality(variant, entry.id)]
-    if qc then row.Text:SetTextColor(qc.r, qc.g, qc.b) else row.Text:SetTextColor(unpack(Utilities.Colors.HIGHLIGHT_WHITE)) end
+    CobySuite_CobysLinkepedia.UI.SetQualityColor(row.Text, Search.VariantQuality(variant, entry.id))
 
     local right = {}
     if variant.savedID and variant.favorite then right[#right + 1] = CreateAtlasMarkup("auctionhouse-icon-favorite", 12, 12) end
@@ -98,12 +97,7 @@ local function InitRow(row, entry, list)
 
   row.Text:SetText(row.item.name)
   if stored then
-    local qc = ITEM_QUALITY_COLORS[stored.quality or 1]
-    if qc then
-      row.Text:SetTextColor(qc.r, qc.g, qc.b)
-    else
-      row.Text:SetTextColor(unpack(Utilities.Colors.HIGHLIGHT_WHITE))
-    end
+    CobySuite_CobysLinkepedia.UI.SetQualityColor(row.Text, stored.quality or 1)
   else
     row.Text:SetTextColor(unpack(Utilities.Colors.DISABLED_GRAY))
   end
@@ -124,21 +118,15 @@ function Search.CreateItemList(parent, opts)
     variantSummaryOnly = opts.variantSummaryOnly, entries = {},
   }
 
-  local scrollBox = CreateFrame("Frame", nil, parent, "WowScrollBoxList")
+  local scroll = CobySuite_CobysLinkepedia.UI.CreateScrollList(parent, {
+    rowHeight = ROW_HEIGHT,
+    initializeRow = function(row, pos)
+      InitRow(row, list.entries[pos], list)
+    end,
+  })
+  local scrollBox, scrollBar = scroll.box, scroll.bar
   scrollBox:SetPoint("TOPLEFT", 0, opts.top or 0)
   scrollBox:SetPoint("BOTTOMRIGHT", -20, 0)
-  scrollBox:SetClipsChildren(true)
-
-  local scrollBar = CreateFrame("EventFrame", nil, parent, "MinimalScrollBar")
-  scrollBar:SetPoint("TOPLEFT", scrollBox, "TOPRIGHT", 4, 0)
-  scrollBar:SetPoint("BOTTOMLEFT", scrollBox, "BOTTOMRIGHT", 4, 0)
-
-  local view = CreateScrollBoxListLinearView()
-  view:SetElementExtent(ROW_HEIGHT)
-  view:SetElementInitializer("Button", function(row, pos)
-    InitRow(row, list.entries[pos], list)
-  end)
-  ScrollUtil.InitScrollBoxListWithScrollBar(scrollBox, scrollBar, view)
   -- The bar shows only when the rows overflow
   ScrollUtil.AddManagedScrollBarVisibilityBehavior(scrollBox, scrollBar)
   scrollBox:SetDataProvider(CreateIndexRangeDataProvider(0))

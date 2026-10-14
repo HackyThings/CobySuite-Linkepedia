@@ -219,12 +219,12 @@ local function GetOrCreateFrame()
   end
 
   -- What an empty answer means, in the first row's place
-  frame.EmptyText = frame:CreateFontString(nil, "OVERLAY", Utilities.Fonts.DATA)
-  frame.EmptyText:SetPoint("TOPLEFT", searchBox, "BOTTOMLEFT", -4, -ROW_GAP - 4)
-  frame.EmptyText:SetPoint("RIGHT", frame, "RIGHT", -12, 0)
-  frame.EmptyText:SetJustifyH("LEFT")
-  frame.EmptyText:SetTextColor(unpack(Utilities.Colors.LABEL_GRAY))
-  frame.EmptyText:Hide()
+  frame.EmptyText = CobySuite_CobysLinkepedia.UI.CreateEmptyLabel(frame, {
+    point = { "TOPLEFT", searchBox, "BOTTOMLEFT", -4, -ROW_GAP - 4 },
+    width = BAR_WIDTH - 20,   -- to 12 short of the bar's right edge
+    justify = "LEFT",
+    font = Utilities.Fonts.DATA,
+  })
 
   SetRowCount(0)
   RestorePosition()
@@ -246,8 +246,7 @@ local function ShowResults(results, query)
     empty = Database.GetCount() == 0 and "Build your item database first: /lp build."
       or "No matching items. Try a shorter name."
   end
-  frame.EmptyText:SetText(empty or "")
-  frame.EmptyText:SetShown(empty ~= nil)
+  frame.EmptyText:SetText(empty)
   SetRowCount(empty and 1 or numVisible)
   local hints = Search.DuplicateHints(currentResults)
 
@@ -261,8 +260,7 @@ local function ShowResults(results, query)
       row.Icon:SetTexture(icon or "Interface\\Icons\\INV_Misc_QuestionMark")
 
       row.Name:SetText(Search.NameWithHint(item.name, hints[i]))
-      local qualityColor = ITEM_QUALITY_COLORS[item.quality or 1]
-      if qualityColor then row.Name:SetTextColor(qualityColor.r, qualityColor.g, qualityColor.b) end
+      CobySuite_CobysLinkepedia.UI.SetQualityColor(row.Name, item.quality or 1, false)
 
       row:Show()
     else

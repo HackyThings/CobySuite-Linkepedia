@@ -133,7 +133,7 @@ end
 -- fromData set and no max.
 function Variants.ReadLinkInfo(link)
   if type(link) ~= "string" then return nil end
-  local itemID = tonumber(strmatch(link, "item:(%d+)"))
+  local itemID = CobySuite_CobysLinkepedia.Utilities.IDFromLink(link)
   if not itemID then return nil end
   local info = { itemID = itemID, rank = 0, kind = "other" }
 

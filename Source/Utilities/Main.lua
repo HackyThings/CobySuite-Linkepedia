@@ -20,7 +20,7 @@ Utilities.CreateDialogPopup = SharedUI.CreateDialogPopup
 Utilities.Colors = {}
 for k, v in pairs(Shared.Colors) do Utilities.Colors[k] = v end
 Utilities.Colors.BRAND_TEAL     = { 0, 0.81, 0.82 }
-Utilities.Colors.TEXT_TEAL      = "00CED1"
+Utilities.Colors.TEXT_TEAL      = CobysLinkepedia.BRAND_COLOR
 
 ---------------------------------------------------------------------------
 -- Addon-specific: chat output (branded prefix with verbosity check)
@@ -45,7 +45,7 @@ end
 
 Utilities.Message = CobySuite_CobysLinkepedia.Chat.NewMessenger({
   prefix = "[Coby's Linkepedia]",
-  color  = Utilities.Colors.TEXT_TEAL,
+  color  = CobysLinkepedia.BRAND_COLOR,
   gate   = ShouldPrintMessage,
 })
 -- Utilities.Message.Success(text, level) and Utilities.Message.Warn(text,

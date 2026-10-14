@@ -17,6 +17,7 @@ local Database = CobysLinkepedia.Database
 local Utilities = CobysLinkepedia.Utilities
 local Debug = CobysLinkepedia.Debug
 local SortDir = CobySuite_CobysLinkepedia.SortDir
+local SetQualityColor = CobySuite_CobysLinkepedia.UI.SetQualityColor
 
 local ROW_HEIGHT = 22
 local ICON_SIZE = 18
@@ -25,7 +26,6 @@ local ICON_SIZE = 18
 local dataProvider = nil
 local scrollBox = nil
 local scrollBar = nil
-local scrollView = nil
 local tableHeader = nil
 local emptyLabel = nil
 local resultsTabActive = true
@@ -300,43 +300,34 @@ local function EnsureRowStructure(row, columns)
   end
 end
 
--- Reposition all cells based on current column widths (called on resize + render)
-local function RepositionCells(row, columns)
-  if not row._cells then return end
-  local x = 0
-  for i, colDef in ipairs(columns) do
-    local cell = row._cells[i]
-    if not cell then break end
-    local w = colDef.width or 0   -- the trailing _pad column carries no width
+-- A row's cell for a column, for the shared row layout: the trailing _pad
+-- column has no cell content and is skipped
+local function CellOf(row, key, index)
+  if key == "_pad" then return nil end
+  local cell = row._cells[index]
+  if cell then return cell.text, cell.icon end
+end
 
-    if colDef.stretch then
-      -- Padding column: no cell content, and it must not advance x.
-    elseif colDef.key == "name" then
-      if cell.icon then
-        cell.icon:ClearAllPoints()
-        cell.icon:SetPoint("LEFT", x + 4, 0)
-      end
-      if cell.text then
-        cell.text:ClearAllPoints()
-        cell.text:SetPoint("LEFT", x + ICON_SIZE + 8, 0)
-        cell.text:SetWidth(math.max(w - ICON_SIZE - 12, 10))
-      end
-    else
-      if cell.text then
-        cell.text:ClearAllPoints()
-        cell.text:SetPoint("LEFT", x + 4, 0)
-        cell.text:SetWidth(math.max(w - 8, 10))
-      end
-    end
-    x = x + w
+-- The column bounds every row is laid out on, taken once per column change
+-- (onColumnResize drops them) rather than once per drawn row
+local cellBounds = nil
+local CELL_LAYOUT = { cell = CellOf, iconKey = "name", iconSize = ICON_SIZE }
+
+-- Reposition all cells based on current column widths (called on resize + render)
+local function RepositionCells(row)
+  if not row._cells then return end
+  if not cellBounds then
+    cellBounds = tableHeader:GetColumnBounds()
+    CELL_LAYOUT.bounds = cellBounds
   end
+  CobySuite_CobysLinkepedia.UI.LayoutRowCells(row, tableHeader, CELL_LAYOUT)
 end
 
 -- Fill cell content with item data (lazy enrichment for visible rows only)
 local function PopulateRow(row, data, columns)
   row.itemData = data
   EnsureRowStructure(row, columns)
-  RepositionCells(row, columns)
+  RepositionCells(row)
   FullEnrich(data)
 
   for i, colDef in ipairs(columns) do
@@ -350,22 +341,12 @@ local function PopulateRow(row, data, columns)
       cell.icon:SetAlpha(1)
       cell.icon:Show()
       cell.text:SetText(data.name)
-      local qc = ITEM_QUALITY_COLORS[data.quality or 1]
-      if qc then
-        cell.text:SetTextColor(qc.r, qc.g, qc.b)
-      else
-        cell.text:SetTextColor(unpack(Utilities.Colors.HIGHLIGHT_WHITE))
-      end
+      SetQualityColor(cell.text, data.quality or 1)
       cell.text:Show()
 
     elseif key == "quality" then
       cell.text:SetText(Utilities.QualityNames[data.quality] or "")
-      local qc = ITEM_QUALITY_COLORS[data.quality or 1]
-      if qc then
-        cell.text:SetTextColor(qc.r, qc.g, qc.b)
-      else
-        cell.text:SetTextColor(unpack(Utilities.Colors.LABEL_GRAY))
-      end
+      SetQualityColor(cell.text, data.quality or 1, Utilities.Colors.LABEL_GRAY)
       cell.text:Show()
 
     elseif key == "itemLevel" then
@@ -555,12 +536,12 @@ function Search.InitResults(window)
       return widest > 0 and widest or nil
     end,
     onColumnResize = function()
+      cellBounds = nil
       if not scrollBox then return end
       -- Reposition cells in visible rows; no object recreation needed
-      local cols = tableHeader:GetColumns()
       scrollBox:ForEachFrame(function(row)
         if row._cells and row.itemData then
-          RepositionCells(row, cols)
+          RepositionCells(row)
         end
       end)
     end,
@@ -568,29 +549,20 @@ function Search.InitResults(window)
 
   tableHeader:SetSort("quality", SortDir.DESC)
 
-  -- ScrollBox: anchored below header, left of detail pane
-  scrollBox = CreateFrame("Frame", nil, window, "WowScrollBoxList")
-  scrollBox:SetPoint("TOPLEFT", tableHeader, "BOTTOMLEFT", 0, 0)
-  -- Row cells are laid out at the same fixed x offsets as the header columns,
-  -- so they need the same clipping or a narrow window spills row text over the
-  -- scrollbar and detail pane while the header above it stays clipped.
-  scrollBox:SetClipsChildren(true)
-  scrollBox:SetPoint("BOTTOMRIGHT", Search._scanStatusFrame, "TOPRIGHT", 0, -4)
-
-  scrollBar = CreateFrame("EventFrame", nil, window, "MinimalScrollBar")
-  scrollBar:SetPoint("TOPLEFT", scrollBox, "TOPRIGHT", 4, 0)
-  scrollBar:SetPoint("BOTTOMLEFT", scrollBox, "BOTTOMRIGHT", 4, 0)
-
+  -- ScrollBox: anchored below header, left of detail pane. Row cells are
+  -- laid out at the same fixed x offsets as the header columns, so they need
+  -- the same clipping (the shared list's default) or a narrow window spills
+  -- row text over the scrollbar and detail pane while the header above it
+  -- stays clipped.
   dataProvider = CreateDataProvider()
-
-  scrollView = CreateScrollBoxListLinearView()
-  scrollView:SetElementExtent(ROW_HEIGHT)
-  scrollView:SetElementInitializer("Button", function(row, data)
-    InitRow(row, data)
-  end)
-
-  ScrollUtil.InitScrollBoxListWithScrollBar(scrollBox, scrollBar, scrollView)
-  scrollBox:SetDataProvider(dataProvider)
+  local list = CobySuite_CobysLinkepedia.UI.CreateScrollList(window, {
+    initializeRow = InitRow,
+    rowHeight = ROW_HEIGHT,
+    dataProvider = dataProvider,
+  })
+  scrollBox, scrollBar = list.box, list.bar
+  scrollBox:SetPoint("TOPLEFT", tableHeader, "BOTTOMLEFT", 0, 0)
+  scrollBox:SetPoint("BOTTOMRIGHT", Search._scanStatusFrame, "TOPRIGHT", 0, -4)
 
   -- The selected mark follows the detail pane: it is keyed by item ID, so a
   -- sort or a scroll that brings the item back marks it again
@@ -602,16 +574,13 @@ function Search.InitResults(window)
     end)
   end)
 
-  -- Empty-state label, same treatment as Coby's Currency Searcher: centred
-  -- grey text over the list rather than an unexplained black void.
-  emptyLabel = window:CreateFontString(nil, "OVERLAY", Utilities.Fonts.BODY)
-  emptyLabel:SetPoint("CENTER", scrollBox, "CENTER", 0, 0)
-  emptyLabel:SetWidth(320)
-  emptyLabel:SetJustifyH("CENTER")
-  emptyLabel:SetSpacing(3)
-  local gray = Utilities.Colors.LABEL_GRAY
-  emptyLabel:SetTextColor(gray[1], gray[2], gray[3])
-  emptyLabel:Hide()
+  -- Empty-state label: centred grey text over the list rather than an
+  -- unexplained black void
+  emptyLabel = CobySuite_CobysLinkepedia.UI.CreateEmptyLabel(window, {
+    point = { "CENTER", scrollBox, "CENTER", 0, 0 },
+    width = 320,
+  })
+  emptyLabel.Text:SetSpacing(3)
 
   -- Closing the window lets a search's list go (Search.ReleaseSearchList)
   window:HookScript("OnHide", function() Search.ReleaseSearchList() end)

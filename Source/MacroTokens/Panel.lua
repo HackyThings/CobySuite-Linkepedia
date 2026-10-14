@@ -165,8 +165,7 @@ local function ItemLabel(itemID)
 end
 
 local function SetQualityColor(fontString, quality)
-  local color = ITEM_QUALITY_COLORS[quality or 1]
-  if color then fontString:SetTextColor(color.r, color.g, color.b) end
+  CobySuite_CobysLinkepedia.UI.SetQualityColor(fontString, quality or 1, false)
 end
 
 local function SetIcon(texture, itemID)
@@ -200,15 +199,15 @@ end
 -- A ScrollBox filling a list box. initRow(row, position) fills a pooled row;
 -- the bar shows only when the rows overflow, and the rows widen without it.
 local function CreateScrollList(box, rowHeight, initRow)
-  local scroll = CreateFrame("Frame", nil, box, "WowScrollBoxList")
-  local bar = CreateFrame("EventFrame", nil, box, "MinimalScrollBar")
+  local list = CobySuite_CobysLinkepedia.UI.CreateScrollList(box, {
+    initializeRow = initRow,
+    rowHeight = rowHeight,
+    scrollbarGap = false,
+    clipChildren = false,
+  })
+  local scroll, bar = list.box, list.bar
   bar:SetPoint("TOPRIGHT", box, "TOPRIGHT", -6, -LIST_PAD - 2)
   bar:SetPoint("BOTTOMRIGHT", box, "BOTTOMRIGHT", -6, LIST_PAD + 2)
-
-  local view = CreateScrollBoxListLinearView()
-  view:SetElementExtent(rowHeight)
-  view:SetElementInitializer("Button", initRow)
-  ScrollUtil.InitScrollBoxListWithScrollBar(scroll, bar, view)
 
   local withBar = {
     CreateAnchor("TOPLEFT", box, "TOPLEFT", LIST_PAD, -LIST_PAD),
@@ -597,7 +596,7 @@ local function Build()
   ButtonFrameTemplate_HidePortrait(panel)
   panel.Inset:Hide()
   panel:SetWidth(SavedWidth())
-  panel:SetTitle(Utilities.WrapColor(Utilities.Colors.TEXT_TEAL, "Coby's Linkepedia") .. " item tokens")
+  panel:SetTitle(Utilities.WrapColor(CobysLinkepedia.BRAND_COLOR, "Coby's Linkepedia") .. " item tokens")
   panel:EnableMouse(true)
   panel:Hide()
   -- Folding, not closing: the tab brings it back

@@ -184,11 +184,12 @@ local function CreateDetailPane(parent)
   -- sets each apart
   f.VariantList = Search.CreateItemList(f.VariantsBox, { variantSummaryOnly = true })
 
-  f.VariantsEmpty = f.VariantsBox:CreateFontString(nil, "OVERLAY", Utilities.Fonts.DATA)
-  f.VariantsEmpty:SetPoint("TOPLEFT", 4, -4)
-  f.VariantsEmpty:SetPoint("RIGHT", -8, 0)
-  f.VariantsEmpty:SetJustifyH("LEFT")
-  f.VariantsEmpty:SetTextColor(unpack(Utilities.Colors.DISABLED_GRAY))
+  f.VariantsEmpty = CobySuite_CobysLinkepedia.UI.CreateEmptyLabel(f.VariantsBox, {
+    points = { { "TOPLEFT", 4, -4 }, { "TOPRIGHT", -8, -4 } },
+    justify = "LEFT",
+    font = Utilities.Fonts.DATA,
+    color = Utilities.Colors.DISABLED_GRAY,
+  })
 
   -- Loading indicator
   f.LoadingText = f:CreateFontString(nil, "OVERLAY", Utilities.Fonts.DATA)
@@ -306,9 +307,8 @@ function Search.ShowDetail(item)
   local _, _, _, _, icon = C_Item.GetItemInfoInstant(item.itemID)
   detailFrame.Icon:SetTexture(icon or "Interface\\Icons\\INV_Misc_QuestionMark")
 
-  local qualityColor = ITEM_QUALITY_COLORS[item.quality or 1]
   detailFrame.ItemName:SetText(item.name)
-  if qualityColor then detailFrame.ItemName:SetTextColor(qualityColor.r, qualityColor.g, qualityColor.b) end
+  CobySuite_CobysLinkepedia.UI.SetQualityColor(detailFrame.ItemName, item.quality or 1, false)
 
   detailFrame.QualityText:SetText(Utilities.QualityNames[item.quality] or "Unknown")
 
@@ -439,16 +439,14 @@ local function CreateWidthGrip(window, pane)
   end
 
   grip:RegisterForClicks("LeftButtonUp")
-  grip:SetScript("OnEnter", function(self)
+  -- The shared tooltip first; the marks hook onto its scripts
+  CobySuite_CobysLinkepedia.UI.AddTooltip(grip, "Drag to resize the detail pane. Double-click for the default width.", "ANCHOR_LEFT")
+  grip:HookScript("OnEnter", function(self)
     ShowMarks(true)
     FollowMouse()
     if not self.dragging then self:SetScript("OnUpdate", FollowMouse) end
-    GameTooltip:SetOwner(self, "ANCHOR_LEFT")
-    GameTooltip:SetText("Drag to resize the detail pane. Double-click for the default width.", 1, 1, 1, 1, true)
-    GameTooltip:Show()
   end)
-  grip:SetScript("OnLeave", function(self)
-    GameTooltip:Hide()
+  grip:HookScript("OnLeave", function(self)
     if self.dragging then return end
     self:SetScript("OnUpdate", nil)
     ShowMarks(false)

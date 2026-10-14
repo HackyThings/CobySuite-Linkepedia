@@ -209,8 +209,7 @@ end
 -- The name with its hint in grey after it (the name alone without one)
 function Search.NameWithHint(name, hint)
   if not hint or hint == "" then return name or "" end
-  local c = Utilities.Colors.LABEL_GRAY
-  return (name or "") .. ("  |cff%02x%02x%02x%s|r"):format(c[1] * 255, c[2] * 255, c[3] * 255, hint)
+  return (name or "") .. "  " .. Utilities.WrapColor(Utilities.Colors.LABEL_GRAY, hint)
 end
 
 -- The item the detail pane shows is marked in every list that holds it, as
@@ -243,14 +242,15 @@ function Search.AddSelectedMark(row)
 end
 
 -- One set of row actions for Results, Favorites and History: click shows the
--- item in the detail pane, Ctrl-click opens the dressing room, Shift-click
--- links it in chat, right-click opens the item menu
+-- item in the detail pane, the player's dressing-room click (Ctrl by
+-- default) opens the dressing room, their chat-link click (Shift by
+-- default) links it in chat, right-click opens the item menu
 function Search.HandleItemClick(item, button, anchor)
   if not item then return end
   if button == "LeftButton" then
-    if IsControlKeyDown() then
+    if IsModifiedClick("DRESSUP") then
       DressUpItemLink("item:" .. item.itemID)
-    elseif IsShiftKeyDown() then
+    elseif IsModifiedClick("CHATLINK") then
       Search.LinkItemToChat(item.itemID)
     elseif Search.SelectItem then
       Search.SelectItem(item)
@@ -295,57 +295,32 @@ local TAB_NAMES = { "Results", "Variants", "Favorites", "History", "Stats" }
 local TAB_INDEX = {}
 for i, name in ipairs(TAB_NAMES) do TAB_INDEX[name:lower()] = i end
 
+local TAB_TOOLTIPS = {
+  "Browse and search items in your database",
+  "Build crafted and upgrade-track versions of gear, and save them",
+  "Items and variants you've marked as favorites",
+  "Recently linked items",
+  "Your database at a glance: its state, last scan and item counts",
+}
+
+-- The shared bottom tabs, hanging under the window with their tops inside
+-- its border strip; the holder has its own name, never the window's
 function CobysLinkepediaSearchWindowMixin:BuildTabs()
-  local tabNames = TAB_NAMES
-  local tabTooltips = {
-    "Browse and search items in your database",
-    "Build crafted and upgrade-track versions of gear, and save them",
-    "Items and variants you've marked as favorites",
-    "Recently linked items",
-    "Your database at a glance: its state, last scan and item counts",
-  }
-
-  for i, name in ipairs(tabNames) do
-    local tab = CreateFrame("Button", "CobysLinkepediaSearchWindowTab" .. i, self, "PanelTabButtonTemplate")
-    if i == 1 then
-      -- The top of each tab sits inside the bottom border strip
-      tab:SetPoint("TOPLEFT", self, "BOTTOMLEFT", 15, 3)
-    else
-      tab:SetPoint("LEFT", _G["CobysLinkepediaSearchWindowTab" .. (i - 1)], "RIGHT", 0, 0)
-    end
-    tab:SetText(name)
-    tab:SetID(i)
-    local tabKey = name:lower()
-    tab:SetScript("OnClick", function()
-      self:SetTab(tabKey)
-    end)
-    Utilities.AddTooltip(tab, tabTooltips[i])
-    PanelTemplates_TabResize(tab, 0)
+  local tabs = {}
+  for i, name in ipairs(TAB_NAMES) do
+    tabs[i] = { key = name:lower(), text = name, tooltip = TAB_TOOLTIPS[i] }
   end
-
-  self.numTabs = #tabNames
-  PanelTemplates_SetTab(self, 1)
-
-  -- Tabs are child frames, so they draw over the window's own border
-  -- textures. Moving the bottom border (the left corner and the edge; the
-  -- right corner stays with the resize grip) onto an overlay above the tabs
-  -- lets the border cover their tops, as on Blizzard's windows. The overlay
-  -- holds nothing else and takes no mouse input.
-  local tabLevel = 0
-  for i = 1, self.numTabs do
-    tabLevel = math.max(tabLevel, _G["CobysLinkepediaSearchWindowTab" .. i]:GetFrameLevel())
-  end
-  local overlay = CreateFrame("Frame", nil, self)
-  overlay:SetAllPoints()
-  overlay:SetFrameLevel(tabLevel + 1)
-  if self.BotLeftCorner then self.BotLeftCorner:SetParent(overlay) end
-  if self.BottomBorder then self.BottomBorder:SetParent(overlay) end
+  self.BottomTabs = CobySuite_CobysLinkepedia.UI.CreateBottomTabs(self, {
+    name = "CobysLinkepediaSearchWindowTabs",
+    tabs = tabs,
+    onSelect = function(key) self:SetTab(key) end,
+  })
 end
 
 function CobysLinkepediaSearchWindowMixin:SetTab(tabName)
   self.activeTab = tabName
-  local tabIndex = TAB_INDEX[tabName] or 1
-  PanelTemplates_SetTab(self, tabIndex)
+  -- marked quietly: SetTab is the selection's one handler
+  self.BottomTabs:Select(TAB_INDEX[tabName] and tabName or "results", true, true)
 
   if Search.SetActiveTab then
     Search.SetActiveTab(tabName)
@@ -429,7 +404,7 @@ do
   local f = CobySuite_CobysLinkepedia.UI.CreateWindow({
     name = "CobysLinkepediaSearchWindow",
     mixin = CobysLinkepediaSearchWindowMixin,
-    title = Utilities.WrapColor(Utilities.Colors.TEXT_TEAL, "Coby's Linkepedia"),
+    title = Utilities.WrapColor(CobysLinkepedia.BRAND_COLOR, "Coby's Linkepedia"),
     icon = CobysLinkepedia.ICON,
     width = DEFAULT_WIDTH,
     height = DEFAULT_HEIGHT,

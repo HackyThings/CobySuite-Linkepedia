@@ -18,6 +18,8 @@ CobysLinkepedia = {
 
 -- The TOC's IconTexture, on every window's title
 CobysLinkepedia.ICON = "Interface\\Icons\\INV_Misc_Book_09"
+-- The brand teal, on the addon's name in every title and the chat prefix
+CobysLinkepedia.BRAND_COLOR = "00CED1"
 
 -- Whether the test files loaded: a development build. A release has none, so
 -- what only developers need (the search window's Debug button) stays out
@@ -51,7 +53,8 @@ CobysLinkepedia.Events = {
 local ADDON_NAME = "CobysLinkepedia"
 local VERSION = C_AddOns.GetAddOnMetadata(ADDON_NAME, "Version") or "2.0.0"
 
-CobysLinkepedia.version = VERSION
+CobysLinkepedia.VERSION = VERSION
+CobysLinkepedia.version = VERSION   -- the older lowercase name, kept as an alias
 
 -------------------------------------------------------------------------------
 -- Key bindings: the labels and the functions the actions call. The actions
@@ -124,18 +127,14 @@ CobysLinkepedia.AddonsList = {
 
 -- "/lp reset windows": every window of the addon back at its default place
 -- and size (CobySuite.UI.ResetWindows). Each window that saves into the
--- window-state table (search, settings, guide, changelog, status, debug, the
--- addons list) is found through it. The stats window saves nothing, so it is
--- listed here; the quick search bar is a plain frame, so onReset re-places it.
--- (The development test dashboard is the library's: /cobysuite reset windows.)
+-- window-state table (search, settings, guide, changelog, status, stats,
+-- debug, the addons list) is found through it; the quick search bar is a
+-- plain frame, so onReset re-places it. (The development test dashboard is
+-- the library's: /cobysuite reset windows.)
 CobysLinkepedia.WindowsReset = {
   host = "CobysLinkepedia", title = "Coby's Linkepedia", icon = CobysLinkepedia.ICON,
   message = Msg,
   states = { function() return COBYS_LINKEPEDIA_WINDOW_STATE end },
-  windows = function()
-    local stats = CobysLinkepedia.Search.GetStatsWindow and CobysLinkepedia.Search.GetStatsWindow()
-    return { stats }
-  end,
   onReset = function()
     if CobysLinkepedia.QuickSearch.ResetPosition then
       CobysLinkepedia.QuickSearch.ResetPosition()

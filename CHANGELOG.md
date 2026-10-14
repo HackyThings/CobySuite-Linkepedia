@@ -4,6 +4,15 @@ All notable changes to Coby's Linkepedia are documented here. Format follows [Ke
 
 ## [Unreleased]
 
+## [2.0.6] - 2026-10-13
+
+### Changed
+
+- Updated for World of Warcraft patch 12.1.5.
+- Shift and Ctrl clicks in the item browser follow the game's chat-link and dressing-room bindings.
+- The statistics window remembers where it was placed.
+- Scan times read like "9s" and "1h 1m 2s".
+
 ## [2.0.5] - 2026-10-11
 
 ### Added
@@ -130,7 +139,8 @@ Coby's Linkepedia 2.0 is a complete rewrite of Linkepedia (last released as 1.5.
 - If the saved item database is damaged, it is cleared at login and a dialog offers to rebuild it. Favorites, history and settings are kept.
 - English game clients are supported: capitalisation is ignored for the letters A to Z, and a quoted search such as `"ring"` matches whole words.
 
-[Unreleased]: https://github.com/HackyThings/CobySuite-Linkepedia/compare/v2.0.5...HEAD
+[Unreleased]: https://github.com/HackyThings/CobySuite-Linkepedia/compare/v2.0.6...HEAD
+[2.0.6]: https://github.com/HackyThings/CobySuite-Linkepedia/releases/tag/v2.0.6
 [2.0.5]: https://github.com/HackyThings/CobySuite-Linkepedia/releases/tag/v2.0.5
 [2.0.4]: https://github.com/HackyThings/CobySuite-Linkepedia/releases/tag/v2.0.4
 [2.0.3]: https://github.com/HackyThings/CobySuite-Linkepedia/releases/tag/v2.0.3

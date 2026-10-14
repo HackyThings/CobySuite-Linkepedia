@@ -32,8 +32,8 @@ local function QualityOptions()
   for q = 0, MAX_QUALITY do
     local name = Utilities.QualityNames[q]
     if name then
-      local color = ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[q]
-      labels[#labels + 1] = color and color.hex and (color.hex .. name .. "|r") or name
+      local hex = Utilities.QualityHex(q, false)
+      labels[#labels + 1] = hex and Utilities.WrapColor(hex, name) or name
       values[#values + 1] = q
     end
   end

@@ -16,12 +16,12 @@ CobysLinkepedia.WhatsNew = WhatsNew
 
 local changelog = CobySuite_CobysLinkepedia.UI.CreateWhatsNewWindow({
   name = "CobysLinkepediaChangelogWindow",
-  title = CobysLinkepedia.Utilities.WrapColor(CobysLinkepedia.Utilities.Colors.TEXT_TEAL, "Coby's Linkepedia") .. ": What's new",
+  title = CobysLinkepedia.Utilities.WrapColor(CobysLinkepedia.BRAND_COLOR, "Coby's Linkepedia") .. ": What's new",
   icon = CobysLinkepedia.ICON,
   intro = "What changed in each version of Coby's Linkepedia, newest first. Click a version to open or close it.",
   footer = "Open this window any time with " .. U.WrapColor(U.Colors.HELP_COMMAND, "/lp changelog"),
   entries = CobysLinkepedia.Data.Changelog,
-  version = CobysLinkepedia.version,
+  version = CobysLinkepedia.VERSION,
   state = function() return COBYS_LINKEPEDIA_WINDOW_STATE end,
   onFirstRun = function() if CobysLinkepedia.Guide.Show then CobysLinkepedia.Guide.Show() end end,
   combatMessage = function(text) CobysLinkepedia.Utilities.Message(text) end,

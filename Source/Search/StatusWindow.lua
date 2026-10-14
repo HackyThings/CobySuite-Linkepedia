@@ -34,7 +34,7 @@ local function Count(n)
 end
 
 local function Plural(n, one, many)
-  return Count(n) .. " " .. (n == 1 and one or many)
+  return Count(n) .. " " .. Utilities.Plural(n, one, many)
 end
 
 local MODE_NAMES = { build = "Build", expand = "Expand" }
@@ -222,7 +222,7 @@ for _, section in ipairs(SECTIONS) do rowTotal = rowTotal + #section.rows end
 
 local window = CobySuite_CobysLinkepedia.UI.CreateWindow({
   name = "CobysLinkepediaStatusWindow",
-  title = Utilities.WrapColor(Utilities.Colors.TEXT_TEAL, "Coby's Linkepedia") .. " Status",
+  title = Utilities.WrapColor(CobysLinkepedia.BRAND_COLOR, "Coby's Linkepedia") .. " Status",
   icon = CobysLinkepedia.ICON,
   width = WIDTH,
   height = TOP + #SECTIONS * SECTION_H + rowTotal * ROW_H + PAD,

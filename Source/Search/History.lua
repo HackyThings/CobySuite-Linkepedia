@@ -102,11 +102,8 @@ do
       end,
     })
 
-    f.EmptyText = f:CreateFontString(nil, "OVERLAY", Utilities.Fonts.BODY)
-    f.EmptyText:SetPoint("CENTER")
+    f.EmptyText = CobySuite_CobysLinkepedia.UI.CreateEmptyLabel(f, { point = { "CENTER" }, width = 420 })
     f.EmptyText:SetText("No recent items.\nLink items to add them to history.")
-    f.EmptyText:SetTextColor(unpack(Utilities.Colors.DISABLED_GRAY))
-    f.EmptyText:SetJustifyH("CENTER")
 
     function f:RefreshHistory()
       local history = COBYS_LINKEPEDIA_STATE and COBYS_LINKEPEDIA_STATE.history or {}
