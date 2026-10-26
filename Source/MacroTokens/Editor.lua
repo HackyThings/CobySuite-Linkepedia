@@ -525,7 +525,8 @@ function MacroTokens.PreloadMacroItems()
 
   for i = 1, numAccount do Scan(i) end
   for i = characterBase + 1, characterBase + numCharacter do Scan(i) end
-  Debug.Log("UI", "Requested %d item(s) named by macro tokens", Utilities.TableCount(requested))
+  local count = Utilities.TableCount(requested)
+  if count > 0 then Debug.Log("UI", "Requested %d item(s) named by macro tokens", count) end
 end
 
 -------------------------------------------------------------------------------
@@ -552,5 +553,3 @@ end
 function MacroTokens.IsApplying()
   return pending ~= nil
 end
-
-Debug.Log("INIT", "Macro tokens editor loaded")

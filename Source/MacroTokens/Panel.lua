@@ -764,5 +764,3 @@ function MacroTokens.EnsurePanel()
   Build()
   MacroTokens.AttachPanel()
 end
-
-Debug.Log("INIT", "Macro tokens panel loaded")

@@ -1376,9 +1376,12 @@ local function Init()
   frame:SetScript("OnSizeChanged", function() refreshSoon:Call() end)
   -- Reagent names and rank item levels arrive as items load. Rank info
   -- arriving can move a default rank, so a result built before it is
-  -- rebuilt rather than kept beside choices that no longer made it
-  frame:SetScript("OnEvent", function()
-    if state.result and state.result.choicesKey ~= ChoicesKey() then ChoicesChanged() end
+  -- rebuilt rather than kept beside choices that no longer made it. Only the
+  -- builder's own item carries rank info, and the key costs a client read per
+  -- rank, so a Build or Expand loading hundreds of other items a second only
+  -- schedules the coalesced repaint.
+  frame:SetScript("OnEvent", function(_, _, itemID)
+    if state.result and itemID == state.itemID and state.result.choicesKey ~= ChoicesKey() then ChoicesChanged() end
     refreshSoon:Call()
   end)
 
@@ -1465,5 +1468,3 @@ Search._variantBuilderTest = {
 
 -- Deferred like the other tabs: the window's own OnLoad runs a frame after load
 C_Timer.After(0, Init)
-
-Debug.Log("INIT", "Search variant builder loaded")

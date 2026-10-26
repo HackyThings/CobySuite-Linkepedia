@@ -70,6 +70,41 @@ Config.Set            = base.Set
 ---------------------------------------------------------------------------
 -- InitializeData: wraps base with addon-specific SavedVariable init
 ---------------------------------------------------------------------------
+
+-- A whole, positive item ID
+local function IsItemID(id)
+  return CobySuite_CobysLinkepedia.Utilities.IsFiniteNumber(id) and id > 0 and id % 1 == 0
+end
+
+-- Keeps the history entries and favorites the readers can use: a history
+-- entry is { id = an item ID, timestamp = a finite number or none }, a
+-- favorite's key an item ID. The addon writes nothing else; a damaged or
+-- hand-edited file can, and one bad entry broke every History draw.
+local function RepairHistoryAndFavorites(state)
+  local dropped = 0
+  local history, kept = state.history, 0
+  for i = 1, #history do
+    local entry = history[i]
+    if type(entry) == "table" and IsItemID(entry.id) then
+      if entry.timestamp ~= nil and not CobySuite_CobysLinkepedia.Utilities.IsFiniteNumber(entry.timestamp) then entry.timestamp = nil end
+      kept = kept + 1
+      history[kept] = entry
+    else
+      dropped = dropped + 1
+    end
+  end
+  for i = #history, kept + 1, -1 do history[i] = nil end
+  for key in pairs(state.favorites) do
+    if not IsItemID(key) then
+      state.favorites[key] = nil
+      dropped = dropped + 1
+    end
+  end
+  if dropped > 0 then
+    CobysLinkepedia.Debug.Warn("CONFIG", "Dropped %d damaged history or favorites entries", dropped)
+  end
+end
+
 function Config.InitializeData()
   -- Initialize config SavedVariable (shared base handles defaults + stale cleanup)
   base.InitializeData()
@@ -87,14 +122,17 @@ function Config.InitializeData()
   else
     if type(COBYS_LINKEPEDIA_STATE.favorites) ~= "table" then COBYS_LINKEPEDIA_STATE.favorites = {} end
     if type(COBYS_LINKEPEDIA_STATE.history) ~= "table" then COBYS_LINKEPEDIA_STATE.history = {} end
+    RepairHistoryAndFavorites(COBYS_LINKEPEDIA_STATE)
   end
+
+  -- Initialize COBYS_LINKEPEDIA_DB first, so nothing below can leave a fresh
+  -- install without one. Its layout belongs to Database; only scanState is
+  -- shared (Scanner, Core).
+  CobysLinkepedia.Database.EnsureStorage()
+
   -- Saved variants repair their own records (Variants/Store.lua); the
   -- window-state table is the base's ensureTables
   CobysLinkepedia.Variants.ValidateSaved()
-
-  -- Initialize COBYS_LINKEPEDIA_DB. Its layout belongs to Database; only
-  -- scanState is shared (Scanner, Core).
-  CobysLinkepedia.Database.EnsureStorage()
 end
 
 ---------------------------------------------------------------------------
@@ -153,8 +191,7 @@ end
 ---------------------------------------------------------------------------
 -- OpenSettings / ToggleSettings: the settings window (Config/Window.lua).
 -- /lp settings and the minimap button toggle it; OpenSettings is the suite's
--- standard open-only entry. The Options > AddOns entry opens
--- the window itself (window:Open).
+-- standard open-only entry.
 ---------------------------------------------------------------------------
 function Config.OpenSettings()
   local f = CobysLinkepediaConfigWindow

@@ -344,5 +344,3 @@ function Linkify.InstallMacroHook(editBox)
   Debug.Log("LINKIFY", "Macro edit box found and hooked")
   return true
 end
-
-Debug.Log("INIT", "Linkify module loaded")

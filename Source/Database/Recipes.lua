@@ -126,11 +126,8 @@ function Database.GetRecipeCount()
   local recipes = Recipes()
   local byItem = recipes and recipes.byItem
   if countGeneration ~= generation or countTable ~= byItem then
-    local n = 0
-    if byItem then
-      for _ in pairs(byItem) do n = n + 1 end
-    end
-    countCache, countGeneration, countTable = n, generation, byItem
+    countCache = byItem and CobySuite_CobysLinkepedia.Utilities.TableCount(byItem) or 0
+    countGeneration, countTable = generation, byItem
   end
   return countCache
 end
@@ -154,5 +151,3 @@ end
 function Database.GetRecipeGeneration()
   return generation
 end
-
-CobysLinkepedia.Debug.Log("INIT", "Recipe index module loaded")

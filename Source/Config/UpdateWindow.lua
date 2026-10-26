@@ -39,7 +39,7 @@ function Config.ShowPatchDialog()
       if CobysLinkepedia.Scanner.StartExpand then
         CobysLinkepedia.Scanner.StartExpand()
       end
-      CobysLinkepedia.Debug.Log("INIT", "WoW patch dialog: user chose to check for new items")
+      CobysLinkepedia.Debug.Log("UI", "WoW patch dialog: Check Now clicked")
     end,
   })
 

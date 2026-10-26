@@ -425,5 +425,3 @@ end }, { CobysLinkepedia.Events.ConfigChanged })
 local rehookFrame = CreateFrame("Frame")
 rehookFrame:RegisterEvent("UPDATE_CHAT_WINDOWS")
 rehookFrame:SetScript("OnEvent", HookChatFrameEditBoxes)
-
-Debug.Log("INIT", "Autocomplete module loaded")

@@ -31,6 +31,21 @@ local DEFAULT_DIVIDER      = {0.3, 0.3, 0.3, 0.8}
 local DEFAULT_RESIZE_HL    = {0.5, 0.5, 1.0, 0.5}
 local DEFAULT_HEADER_FONT  = CobySuite_CobysLinkepedia.Utilities.Fonts.SMALL
 
+-- The sort arrow: the Auction House and crafting order headers' own, which
+-- points down as drawn and is flipped to point up for an ascending sort
+local SORT_ARROW_ATLAS = "auctionhouse-ui-sortarrow"
+local SORT_ARROW_GAP = 3
+
+-- Shows the arrow for dir, or hides it when dir is nil
+local function SetArrow(arrow, dir)
+  if dir == SortDir.ASC then
+    arrow:SetTexCoord(0, 1, 1, 0)
+  elseif dir == SortDir.DESC then
+    arrow:SetTexCoord(0, 1, 0, 1)
+  end
+  arrow:SetShown(dir ~= nil)
+end
+
 CobySuite_CobysLinkepedia.UI.TableHeaderMixin = {}
 local Mixin = CobySuite_CobysLinkepedia.UI.TableHeaderMixin
 
@@ -271,8 +286,13 @@ function Mixin:_BuildHeaders()
     text:SetText(col.label or "")
     btn._headerText = text
 
-    local sortArrow = btn:CreateFontString(nil, "OVERLAY", self._headerFont)
-    sortArrow:SetPoint("LEFT", text, "RIGHT", 2, 0)
+    -- sized to the header font, so it sits beside the title like a letter
+    local _, fontSize = text:GetFont()
+    local sortArrow = btn:CreateTexture(nil, "OVERLAY")
+    sortArrow:SetAtlas(SORT_ARROW_ATLAS)
+    sortArrow:SetSize(fontSize or 10, fontSize or 10)
+    sortArrow:SetPoint("LEFT", text, "RIGHT", SORT_ARROW_GAP, 0)
+    sortArrow:Hide()
     btn._sortArrow = sortArrow
 
     local bg = btn:CreateTexture(nil, "BACKGROUND")
@@ -425,7 +445,7 @@ function Mixin:_HandleSortClick(colIndex)
   -- Clear arrows on other headers
   for j, btn in ipairs(self._headerButtons) do
     if j ~= colIndex and btn._sortArrow then
-      btn._sortArrow:SetText("")
+      SetArrow(btn._sortArrow, nil)
     end
   end
 
@@ -438,7 +458,7 @@ function Mixin:_HandleSortClick(colIndex)
     self._sortDir = SortDir.ASC
   end
 
-  btn._sortArrow:SetText(self._sortDir == SortDir.ASC and " ^" or " v")
+  SetArrow(btn._sortArrow, self._sortDir)
 
   if self._onSort then
     self._onSort(self._sortKey, self._sortDir)
@@ -523,11 +543,7 @@ function Mixin:SetSort(key, dir)
 
   for i, col in ipairs(self._columns) do
     local btn = self._headerButtons[i]
-    if col.key == key then
-      btn._sortArrow:SetText(dir == SortDir.ASC and " ^" or " v")
-    else
-      btn._sortArrow:SetText("")
-    end
+    SetArrow(btn._sortArrow, col.key == key and dir or nil)
   end
 end
 
@@ -545,9 +561,9 @@ function Mixin:_ContentWidth(colIndex)
   local headerBtn = self._headerButtons[colIndex]
   local maxWidth = (headerBtn._headerText:GetUnboundedStringWidth() or 0) + PADDING
 
-  local arrowWidth = headerBtn._sortArrow:GetUnboundedStringWidth() or 0
-  if arrowWidth > 0 then
-    maxWidth = maxWidth + arrowWidth + 4
+  -- the sorted column's arrow, read from the sort state rather than the texture
+  if self._sortDir and col.key == self._sortKey then
+    maxWidth = maxWidth + (headerBtn._sortArrow:GetWidth() or 0) + SORT_ARROW_GAP
   end
 
   -- Delegate content measurement to consumer

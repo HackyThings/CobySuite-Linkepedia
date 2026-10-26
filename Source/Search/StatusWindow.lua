@@ -237,7 +237,11 @@ local window = CobySuite_CobysLinkepedia.UI.CreateWindow({
 window.Rows = {}       -- key -> row frame, with .Value
 local lists = {}       -- one shared metric list per section
 
+-- Once a session per row: the window repaints twice a second
+local rowErrorsLogged = {}
 local function OnRowError(metric, err)
+  if rowErrorsLogged[metric.key] then return end
+  rowErrorsLogged[metric.key] = true
   Debug.Warn("UI", "Status window row %s failed: %s", metric.key, tostring(err))
 end
 
@@ -296,5 +300,3 @@ end
 function Search.ToggleStatusWindow()
   window:Toggle()
 end
-
-Debug.Log("INIT", "Status window loaded")

@@ -2,8 +2,7 @@
 -- (CobySuite.UI.CreateSettingsWindow): a sidebar of categories, staged edits
 -- that Apply writes through Config.Set, Undo Edits and Defaults, and a Guide
 -- button beside Defaults that opens the feature guide. Opened from
--- /lp settings, the minimap button and the Options > AddOns entry
--- (registered at the bottom). Built at load, so opening it never creates
+-- /lp settings and the minimap button. Built at load, so opening it never creates
 -- frames in combat; the controls are painted from config on every show.
 --
 -- Each feature's on/off switch sits on its section header or card, and the
@@ -195,7 +194,7 @@ local window = UI.CreateSettingsWindow({
         panel:Slider{
           key = Opt.MAX_RECENT_HISTORY, label = "History length",
           min = 0, max = 200, step = 1, format = History, minLabel = "Off", maxLabel = "200",
-          description = "How many of the items you linked the History tab keeps. At Off, new links are no longer kept and the list empties the next time you link an item; the History tab's Clear History empties it now.",
+          description = "How many of the items you linked the History tab keeps. A lower number trims the list the next time you link an item, and at Off new links are no longer kept; the History tab's Clear History empties it now.",
         }
         panel:Section("Shortcuts", {
           icon = ICONS .. "INV_Misc_Key_05",
@@ -248,21 +247,3 @@ local window = UI.CreateSettingsWindow({
     },
   },
 })
-
--------------------------------------------------------------------------------
--- Options > AddOns entry: the shared page with a button that opens this
--- window, registered once the addon has loaded (as Public Order Whisper does)
--------------------------------------------------------------------------------
-EventUtil.ContinueOnAddOnLoaded("CobysLinkepedia", function()
-  UI.RegisterSettingsCategory({
-    name        = "Coby's Linkepedia",
-    brandColor  = CobysLinkepedia.BRAND_COLOR,
-    version     = CobysLinkepedia.VERSION,
-    description = {
-      "Your personal item encyclopedia. Search, autocomplete and link any item in the game from a database the addon builds on your own client, with no addon update needed after a patch.",
-      "The settings live in the addon's own settings window.",
-    },
-    slash       = "/lp settings",
-    onOpen      = function() window:Open() end,
-  })
-end)

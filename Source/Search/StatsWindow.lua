@@ -2,7 +2,6 @@
 
 local Search = CobysLinkepedia.Search
 local Utilities = CobysLinkepedia.Utilities
-local Debug = CobysLinkepedia.Debug
 
 local ADDON_NAME = "CobysLinkepedia"
 local UPDATE_INTERVAL = 0.5
@@ -20,26 +19,11 @@ local function GreenGray(val, text)
   return Utilities.WrapColor(val and colors.TEXT_GREEN or colors.DISABLED_GRAY, text)
 end
 
--- Counts that rarely change are kept between polls: the variant total until
--- the variant generation moves, the addon counts until an addon loads. The
+-- The addon counts are kept between polls until an addon loads. The
 -- session clock starts at this login or reload.
-local variantCount, variantCountGeneration
 local addonCountText
 local sessionStart
-
-local function CapturedVariantCount()
-  local generation = CobysLinkepedia.Database.GetVariantGeneration()
-  if variantCountGeneration ~= generation then
-    local count = 0
-    if COBYS_LINKEPEDIA_DB and COBYS_LINKEPEDIA_DB.variants then
-      for _, v in pairs(COBYS_LINKEPEDIA_DB.variants) do
-        count = count + #v
-      end
-    end
-    variantCount, variantCountGeneration = count, generation
-  end
-  return variantCount
-end
+local DEBUG_BUFFER_SIZE = 5000   -- the shared logger's default; Debug/Logger.lua sets no other
 
 local function AddonCountText()
   if not addonCountText then
@@ -97,7 +81,7 @@ local METRICS = {
       local _, _, home = GetNetStats()
       return string.format("%.0f ms", home)
     end,
-    tooltip = "Latency to home (game) server",
+    tooltip = "How long the game server takes to answer.",
   },
   {
     label = "World latency",
@@ -105,7 +89,7 @@ local METRICS = {
       local _, _, _, world = GetNetStats()
       return string.format("%.0f ms", world)
     end,
-    tooltip = "Latency to world server",
+    tooltip = "How long the world server takes to answer.",
   },
   {
     label = "Database items",
@@ -118,19 +102,16 @@ local METRICS = {
   {
     label = "Captured variants",
     getValue = function()
-      return BreakUpLargeNumbers(CapturedVariantCount())
+      return BreakUpLargeNumbers(CobysLinkepedia.Database.GetVariantTotal())
     end,
     tooltip = "Distinct item variants captured from gameplay",
   },
   {
     label = "Pending items",
     getValue = function()
-      if COBYS_LINKEPEDIA_DB and COBYS_LINKEPEDIA_DB.scanState and COBYS_LINKEPEDIA_DB.scanState.pendingIDs then
-        return BreakUpLargeNumbers(#COBYS_LINKEPEDIA_DB.scanState.pendingIDs)
-      end
-      return "0"
+      return BreakUpLargeNumbers(CobysLinkepedia.Scanner.GetIdleStatus().queued)
     end,
-    tooltip = "Items queued for retry in idle scan (not yet resolved from server)",
+    tooltip = "Items the server has not sent yet. The idle scan keeps asking for them.",
   },
   {
     label = "Scan active",
@@ -147,7 +128,7 @@ local METRICS = {
     label = "Debug buffer",
     getValue = function()
       local size = CobysLinkepedia.Debug.GetBufferSize()
-      return string.format("%d / 5000", size)
+      return string.format("%d / %d", size, DEBUG_BUFFER_SIZE)
     end,
     tooltip = "Entries held in the debug log",
   },
@@ -182,8 +163,7 @@ local function CreateStatsWindow()
   local winH = numMetrics * ROW_H + 50
 
   -- Shell: draggable, its place saved with the other windows' (the screen's
-  -- center until it is moved). No solid background: the window has always
-  -- shown the template art alone.
+  -- center until it is moved). No solid background: the template art alone.
   local f = CobySuite_CobysLinkepedia.UI.CreateWindow({
     name = "CobysLinkepediaStatsWindow",
     title = Utilities.WrapColor(CobysLinkepedia.BRAND_COLOR, "Coby's Linkepedia") .. " Stats",
@@ -249,5 +229,3 @@ end
 EventUtil.ContinueOnPlayerLogin(function()
   if not InCombatLockdown() then CreateStatsWindow() end
 end)
-
-Debug.Log("INIT", "Stats window loaded")

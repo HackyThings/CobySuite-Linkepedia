@@ -4,7 +4,6 @@
 ---------------------------------------------------------------------------
 local Toast = CobysLinkepedia.Toast
 local Config = CobysLinkepedia.Config
-local Debug = CobysLinkepedia.Debug
 local Utilities = CobysLinkepedia.Utilities
 
 local TOAST_HEIGHT = 44
@@ -55,6 +54,7 @@ function Toast.DismissAll()
 end
 
 ---------------------------------------------------------------------------
+-- A toast for each captured variant, while the option is on
 ---------------------------------------------------------------------------
 local listener = { ReceiveEvent = function(_, _, itemID, itemName)
   local _, _, _, _, icon = C_Item.GetItemInfoInstant(itemID)
@@ -62,5 +62,3 @@ local listener = { ReceiveEvent = function(_, _, itemID, itemName)
 end }
 
 CobysLinkepedia.EventBus:Register(listener, { CobysLinkepedia.Events.ItemCaptured })
-
-Debug.Log("INIT", "Toast module loaded")

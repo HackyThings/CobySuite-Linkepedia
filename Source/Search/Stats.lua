@@ -11,7 +11,6 @@
 local Search = CobysLinkepedia.Search
 local Database = CobysLinkepedia.Database
 local Utilities = CobysLinkepedia.Utilities
-local Debug = CobysLinkepedia.Debug
 
 local QUALITY_MAX = 8        -- Enum.ItemQuality: Poor (0) through WoW Token (8)
 local TYPE_TILES = 32        -- more than the item classes the game has
@@ -252,5 +251,3 @@ do
 
   C_Timer.After(0, InitStatsTab)
 end
-
-Debug.Log("INIT", "Search stats loaded")

@@ -6,7 +6,6 @@
 local Search = CobysLinkepedia.Search
 local Scanner = CobysLinkepedia.Scanner
 local Utilities = CobysLinkepedia.Utilities
-local Debug = CobysLinkepedia.Debug
 
 local FOOTER_H = 60
 local COMPACT_H = 28   -- the control row alone, while no scan runs
@@ -52,13 +51,7 @@ function Search.InitScanStatus(window)
   -- Expand picks the scan intensity: Shift for Boost, Ctrl+Shift for Max
   -- (see INTENSITY_CAPS in the scanner); a plain click follows the Scan
   -- speed setting.
-  local function IntensityFromModifiers()
-    if IsShiftKeyDown() then
-      if IsControlKeyDown() then return "Max" end
-      return "Boost"
-    end
-    return nil
-  end
+  local IntensityFromModifiers = CobysLinkepedia.Config.Examples.Intensity
 
   local function HasItems()
     return (CobysLinkepedia.Database.GetCount() or 0) > 0
@@ -213,6 +206,7 @@ function Search.InitScanStatus(window)
         end
       end
       f.DetailText:SetText(table.concat(parts, "  |  "))
+      f.DetailText:SetTextColor(unpack(Utilities.Colors.LABEL_GRAY))
 
       -- Last found item + phase hint
       local lastItem = ""
@@ -269,5 +263,3 @@ function Search.InitScanStatus(window)
 
   Search._scanStatusFrame = f
 end
-
-Debug.Log("INIT", "Scan status panel loaded")

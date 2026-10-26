@@ -122,5 +122,3 @@ do
 
   C_Timer.After(0, InitHistoryTab)
 end
-
-Debug.Log("INIT", "Search history loaded")

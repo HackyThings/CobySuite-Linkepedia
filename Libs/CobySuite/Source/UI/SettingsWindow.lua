@@ -85,8 +85,17 @@
 -- change; an Input stages when its text is committed (Enter, leaving the
 -- field, or Apply, which commits the field being typed in first), and typing
 -- in it lights Apply and Cancel as soon as its text differs from where the
--- edit started.
---   panel:Section(text, opts)       -- opts: visibleWhen, refresh
+-- edit started. A Checkbox, Slider, Radio, Tiles or ToggleTiles row (and a
+-- section or card switch) with immediate = true is never staged: its value
+-- goes through Config.Set as it changes (a slider while dragging, at most
+-- every 0.05 s, and the value it ends on), then onApply gets the one change.
+-- Apply and Undo Edits do not count it; the row follows the setting when it
+-- changes elsewhere (the watch event), and a refused value is painted back.
+-- A page taller than the window shows a shadow and a bobbing arrow over its
+-- last rows while more lies below (a click scrolls a page) and a lighter
+-- shadow under the top edge once scrolled; its first view is nudged by up to
+-- the top margin so the next row peeks in, unless the player grew the window.
+--   panel:Section(text, opts)      -- opts: visibleWhen, refresh
 --   panel:Description(text, opts)
 --   panel:Checkbox{ key, label, tooltip, indent }
 --   panel:Input{ key, label, tooltip, indent, width = 55, x, numeric, digits, maxLetters, format(value) -> text,
@@ -113,8 +122,9 @@
 -- it that wraps. enabledWhen disables a row whose staying in view explains
 -- the feature; visibleWhen hides one that applies to one mode only; a hidden
 -- or disabled row keeps its value, staged or saved.
---   panel:Section(text, { icon/atlas, subtitle, count(window), switchKey, switchTooltip })
---     count: "(12)" after the title; switchKey: an on/off box at the header's right end
+--   panel:Section(text, { icon/atlas, subtitle, count(window), switchKey, switchTooltip, switchLabel, immediate })
+--     count: "(12)" after the title; switchKey: an on/off box at the header's right end, with "Enabled" /
+--     "Disabled" beside it (switchLabel = false for none, { on, off } for other words)
 --   panel:Radio{ ..., options = { { value, label, tooltip, description } }, inline, label, labelWidth }
 --     inline: the options side by side on one line after the label. One option lit for a saved
 --     value; values may be strings, numbers or booleans (false too)
@@ -139,7 +149,7 @@
 --   panel:StatusCard{ icon/atlas, state, stateText, title, description (all live), ticker,
 --                     actions = { { text (live), onClick(window), enabled (live), tooltip (live), width } }, gap }
 --     what is happening now; read only; row.Refresh() repaints it
---   panel:BeginCard{ title (live), description (live), icon/atlas, dot, switchKey, switchTooltip, visibleWhen } ... panel:EndCard()
+--   panel:BeginCard{ title (live), description (live), icon/atlas, dot, switchKey, switchTooltip, switchLabel, immediate, visibleWhen } ... panel:EndCard()
 --     the rows between sit in one bordered card and show only while it does
 --   panel:Note{ text (live), icon/atlas, color }   -- with a color, a callout strip; empty text takes no room
 --   panel:Notice{ kind (live: "info", "warn", "error"), text (live), recovery (live) }
@@ -328,7 +338,14 @@ end
 -- the mouse across the whole SCROLLBAR_ROOM gutter the controls leave free
 -- (a 6-pixel target was hard to grab: Task #239)
 local SCROLL_BAR_W = 6
-local SCROLL_FADE_H = 22   -- the shadow along a scrolling page's bottom edge
+local SCROLL_FADE_H = 48   -- the shadow over a scrolling page's last rows while more lies below
+local SCROLL_FADE_TOP_H = 28   -- and the lighter one under the top edge once the page has scrolled
+local SCROLL_CHEVRON = 20      -- the down arrow that bobs at the bottom edge, and scrolls a page when clicked
+local SCROLL_CHEVRON_ATLAS = "friendslist-categorybutton-arrow-down"   -- Blizzard's FriendsFrame category arrow
+local SCROLL_BOB = 3           -- how far the arrow bobs, in pixels
+local SCROLL_EDGE_SLACK = 6    -- a row edge this close to the view's bottom counts as on it
+local SCROLL_PEEK = 24         -- how much of the next row the default view shows, at most
+local SCROLL_PAGE_OVERLAP = 40 -- a chevron click scrolls a page less this much, so the last line stays in view
 
 local function AddScrollIndicator(scroll)
   local track = CreateFrame("Frame", nil, scroll)
@@ -358,25 +375,71 @@ local function AddScrollIndicator(scroll)
   thumbHover:SetAllPoints(thumbTex)
   thumbHover:SetColorTexture(light[1], light[2], light[3], 0.3)
 
-  -- A soft shadow along the bottom edge while there is more below, so a row that runs past the
-  -- edge reads as scrolling, not as cut text (the screens review, 2026-10-11)
-  local fadeFrame = CreateFrame("Frame", nil, scroll)
-  fadeFrame:SetHeight(SCROLL_FADE_H)
-  fadeFrame:SetPoint("BOTTOMLEFT", scroll, "BOTTOMLEFT", 0, 0)
-  fadeFrame:SetPoint("BOTTOMRIGHT", scroll, "BOTTOMRIGHT", -SCROLLBAR_ROOM, 0)
-  -- above every row of the page, however deeply its frames nest (a level just over the scroll's may sit under
-  -- them, leaving the last line cut at full brightness: the screens review of Task #374)
-  fadeFrame:SetFrameLevel(scroll:GetFrameLevel() + 60)
-  fadeFrame:EnableMouse(false)
-  fadeFrame:Hide()
-  local fade = fadeFrame:CreateTexture(nil, "OVERLAY")
-  fade:SetAllPoints()
-  if fade.SetGradient and CreateColor then
-    -- a gradient only tints vertex colors: a texture with nothing set draws nothing (q374-02 showed no shadow)
-    fade:SetColorTexture(1, 1, 1, 1)
-    fade:SetGradient("VERTICAL", CreateColor(0, 0, 0, 0.75), CreateColor(0, 0, 0, 0))
+  -- A shadow over the last rows while there is more below, with a bobbing arrow on it, so a page whose
+  -- rows end exactly at the edge still reads as scrolling (Cobanyte, 2026-10-25, Task #543; the screens
+  -- review of 2026-10-11 added the first, fainter shadow). A lighter one under the top edge once the page
+  -- has scrolled says there is more above.
+  local function AddFade(point, height, edgeAlpha)
+    local frame = CreateFrame("Frame", nil, scroll)
+    frame:SetHeight(height)
+    frame:SetPoint(point .. "LEFT", scroll, point .. "LEFT", 0, 0)
+    frame:SetPoint(point .. "RIGHT", scroll, point .. "RIGHT", -SCROLLBAR_ROOM, 0)
+    -- above every row of the page, however deeply its frames nest (a level just over the scroll's may sit under
+    -- them, leaving the last line cut at full brightness: the screens review of Task #374)
+    frame:SetFrameLevel(scroll:GetFrameLevel() + 60)
+    frame:EnableMouse(false)
+    frame:Hide()
+    local tex = frame:CreateTexture(nil, "OVERLAY")
+    tex:SetAllPoints()
+    if tex.SetGradient and CreateColor then
+      -- a gradient only tints vertex colors: a texture with nothing set draws nothing (q374-02 showed no shadow)
+      tex:SetColorTexture(1, 1, 1, 1)
+      local dark, clear = CreateColor(0, 0, 0, edgeAlpha), CreateColor(0, 0, 0, 0)
+      if point == "BOTTOM" then
+        tex:SetGradient("VERTICAL", dark, clear)
+      else
+        tex:SetGradient("VERTICAL", clear, dark)
+      end
+    else
+      tex:SetColorTexture(0, 0, 0, 0.3)
+    end
+    return frame
+  end
+  local fadeFrame = AddFade("BOTTOM", SCROLL_FADE_H, 0.92)
+  local fadeTopFrame = AddFade("TOP", SCROLL_FADE_TOP_H, 0.7)
+
+  -- The arrow is a button over the shadow; its bob is an animation group, so nothing runs per frame at rest
+  local chevron = CreateFrame("Button", nil, scroll)
+  chevron:SetSize(SCROLL_CHEVRON + 8, SCROLL_CHEVRON + 8)
+  chevron:SetPoint("BOTTOM", scroll, "BOTTOM", -SCROLLBAR_ROOM / 2, 4)
+  chevron:SetFrameLevel(scroll:GetFrameLevel() + 62)
+  chevron:Hide()
+  local gold = U.Colors.STATUS_GOLD
+  if C_Texture and C_Texture.GetAtlasInfo and not C_Texture.GetAtlasInfo(SCROLL_CHEVRON_ATLAS) then
+    -- the atlas is gone from this client: a plain "v" in its place
+    local glyph = chevron:CreateFontString(nil, "OVERLAY", U.Fonts.BODY)
+    glyph:SetPoint("CENTER")
+    glyph:SetText("v")
+    glyph:SetTextColor(gold[1], gold[2], gold[3])
   else
-    fade:SetColorTexture(0, 0, 0, 0.3)
+    local chevronTex = chevron:CreateTexture(nil, "OVERLAY")
+    chevronTex:SetPoint("CENTER")
+    chevronTex:SetSize(SCROLL_CHEVRON, SCROLL_CHEVRON)
+    chevronTex:SetAtlas(SCROLL_CHEVRON_ATLAS)
+    chevronTex:SetVertexColor(gold[1], gold[2], gold[3])
+  end
+  chevron:SetAlpha(0.85)
+  chevron:SetScript("OnEnter", function(self) self:SetAlpha(1) end)
+  chevron:SetScript("OnLeave", function(self) self:SetAlpha(0.85) end)
+  if chevron.CreateAnimationGroup then
+    local bob = chevron:CreateAnimationGroup()
+    bob:SetLooping("BOUNCE")
+    local down = bob:CreateAnimation("Translation")
+    down:SetOffset(0, -SCROLL_BOB)
+    down:SetDuration(0.7)
+    down:SetSmoothing("IN_OUT")
+    chevron:SetScript("OnShow", function() bob:Play() end)
+    chevron:SetScript("OnHide", function() bob:Stop() end)
   end
 
   local function Update()
@@ -384,10 +447,16 @@ local function AddScrollIndicator(scroll)
     if range <= 0 then
       track:Hide()
       fadeFrame:Hide()
+      fadeTopFrame:Hide()
+      chevron:Hide()
       return
     end
     track:Show()
-    fadeFrame:SetShown(scroll:GetVerticalScroll() < range - 1)
+    local offset = scroll:GetVerticalScroll()
+    local more = offset < range - 1
+    fadeFrame:SetShown(more)
+    chevron:SetShown(more)
+    fadeTopFrame:SetShown(offset > 1)
     local trackH = track:GetHeight()
     if trackH <= 0 then return end
     local ratio = scroll:GetHeight() / (scroll:GetHeight() + range)
@@ -403,6 +472,10 @@ local function AddScrollIndicator(scroll)
     scroll:SetVerticalScroll(math.max(0, math.min(range, offset)))
     Update()
   end
+
+  chevron:SetScript("OnClick", function()
+    ScrollTo(scroll:GetVerticalScroll() + math.max(30, scroll:GetHeight() - SCROLL_PAGE_OVERLAP))
+  end)
 
   scroll:EnableMouseWheel(true)
   scroll:SetScript("OnMouseWheel", function(self, delta)
@@ -666,6 +739,79 @@ function Settings:Apply()
   end
 end
 
+-- A control's own change: staged for Apply, or, for a row with immediate = true, written through
+-- Config.Set as it changes (Cobanyte, 2026-10-25, Task #543: dragging a size or opacity slider
+-- should move the thing in game, with no Apply)
+function Settings:Edit(key, value, immediate)
+  if immediate then
+    self:CommitNow(key, value)
+  else
+    self:StageEdit(key, value)
+  end
+end
+
+local IMMEDIATE_GAP = 0.05   -- an immediate row writes at most this often; the newest value goes out when it opens
+
+-- Writes an immediate row's value now, or, when the key was written less than IMMEDIATE_GAP ago, holds
+-- the newest value and writes it when the gap is over (so a drag writes at most 20 times a second and
+-- the value the player lets go on is always written). Ignored while the window paints its controls,
+-- and while it is closed.
+function Settings:CommitNow(key, value)
+  if self.syncing or not self:IsShown() then return end
+  local last = self.commitAt[key]
+  local now = GetTime()
+  if last and now - last < IMMEDIATE_GAP then
+    local waiting = self.commitHeld[key] ~= nil
+    self.commitHeld[key] = { value }
+    if not waiting then
+      C_Timer.After(IMMEDIATE_GAP - (now - last), function()
+        local held = self.commitHeld[key]
+        self.commitHeld[key] = nil
+        if held then self:WriteNow(key, held[1]) end
+      end)
+    end
+    return
+  end
+  self:WriteNow(key, value)
+end
+
+-- One immediate write: Config.Set, then onApply with the one change, and the rows that follow the
+-- setting (enabledWhen, visibleWhen) read again. The control keeps what the player set (the write
+-- is the window's own, so NotifyConfigChanged skips it); a refused value is painted back.
+function Settings:WriteNow(key, value)
+  local config = self:ConfigFor(key)
+  if not config then return end
+  self.commitAt[key] = GetTime()
+  self.pending[key] = nil
+  local old = SafeGet(config, key)
+  if value == old then
+    self:RefreshState()
+    return
+  end
+  local print = self.opts.message or print
+  self.applying = true
+  local ok, result, reason = pcall(config.Set, key, value)
+  self.applying = false
+  local refused = not ok or result == false
+  if not ok then
+    print(("Setting %s was not saved: %s"):format(tostring(key), tostring(result)))
+  elseif result == false then
+    print(("Setting %s was not applied: %s"):format(tostring(key), tostring(reason)))
+  end
+  local now = SafeGet(config, key)
+  if now ~= old and self.opts.onApply then
+    local applied, err = pcall(self.opts.onApply, { [key] = { old = old, new = now } }, self)
+    if not applied then
+      print(("Settings were saved, but applying them failed: %s"):format(tostring(err)))
+    end
+  end
+  if refused then
+    self:Populate(self.getter, key)   -- show what is saved
+  else
+    self:RefreshState()
+  end
+end
+
 -- Stages the default of every setting the window shows whose config is there
 function Settings:StageDefaults()
   for key in pairs(self.keys) do
@@ -730,7 +876,7 @@ function Settings:SelectCategory(key)
       -- A panel hidden while the window was resized has not followed it yet
       if self:IsShown() then panel:Layout() end
       panel.scroll:SetVerticalScroll(0)
-      C_Timer.After(0, panel.scroll.UpdateScrollIndicator)
+      C_Timer.After(0, function() panel:SettleView() end)
     end
   end
   for _, button in ipairs(self.sidebarButtons) do
@@ -805,6 +951,8 @@ function Panel:Layout()
   local get = self.window.getter
   local y = -PAD
   local first = true
+  local edges = {}   -- each visible row's top and bottom, down from the content's top (PeekNudge)
+  self.edges = edges
   for _, row in ipairs(self.rows) do
     local visible = true
     if row.visibleWhen then visible = row.visibleWhen(get) and true or false end
@@ -817,6 +965,7 @@ function Panel:Layout()
       row:ClearAllPoints()
       row:SetPoint("TOPLEFT", self.content, "TOPLEFT", 0, y)
       row:SetPoint("TOPRIGHT", self.content, "TOPRIGHT", 0, y)
+      edges[#edges + 1] = { top = -y, bottom = -y + row:GetHeight() }
       y = y - row:GetHeight()
       first = false
     end
@@ -825,6 +974,38 @@ function Panel:Layout()
   if self.scroll and self.scroll.UpdateScrollIndicator then
     self.scroll.UpdateScrollIndicator()
   end
+end
+
+-- How far to scroll the page's default view so the first view ends partway through a row. A page
+-- whose rows end at the bottom edge (or whose next row starts just past it) looks complete, so the
+-- next row is brought in by up to SCROLL_PEEK px; the nudge never goes past PAD, the empty band above
+-- the first row, so nothing at the top is cut. 0 when the page fits, a row already straddles the edge,
+-- or the player grew the window (their view is theirs).
+function Panel:PeekNudge()
+  local scroll = self.scroll
+  local range = scroll:GetVerticalScrollRange()
+  local viewH = scroll:GetHeight()
+  if type(range) ~= "number" or range <= 0 or type(viewH) ~= "number" or viewH <= 0 then return 0 end
+  if self.window:GetHeight() > (self.window.declaredHeight or 0) + 1 then return 0 end
+  for _, edge in ipairs(self.edges or {}) do
+    if edge.bottom > viewH + SCROLL_EDGE_SLACK then
+      -- the first row not wholly in view: it already shows part of itself, or it is brought in
+      if edge.top < viewH - SCROLL_EDGE_SLACK then return 0 end
+      local peek = math.min(SCROLL_PEEK, (edge.bottom - edge.top) / 2)
+      return math.max(0, math.min(PAD, range, edge.top + peek - viewH))
+    end
+  end
+  return 0
+end
+
+-- Run once the scroll range is known after a page shows: the default view (offset 0) takes its nudge
+function Panel:SettleView()
+  local scroll = self.scroll
+  if scroll:GetVerticalScroll() <= 0.5 then
+    local nudge = self:PeekNudge()
+    if nudge > 0 then scroll:SetVerticalScroll(nudge) end
+  end
+  scroll.UpdateScrollIndicator()
 end
 
 -- A label on a row, vertically centred on the first ROW_H of it
@@ -936,22 +1117,56 @@ function Panel:Section(text, opts)
   row.Divider:SetPoint("TOPRIGHT", row, "TOPRIGHT", -PAD, -16)
   -- switchKey: an on/off box at the header's right end, bound to that
   -- setting (the rows under it can follow it with enabledWhen)
-  if opts.switchKey then self:Switch(row, opts.switchKey, opts.switchTooltip, -8) end
+  if opts.switchKey then self:Switch(row, opts.switchKey, opts.switchTooltip, -8, opts) end
   -- subtitle: a grey line under the divider that wraps to the panel's width
   if opts.subtitle then self:Describe(row, { description = opts.subtitle }, PAD) end
   return row
 end
 
--- Switch(row, key, tooltip, y): a checkbox at the row's right end, y below
--- its top, staging key
-function Panel:Switch(row, key, tooltip, y)
+local SWITCH_WORDS = { "Enabled", "Disabled" }   -- a switch's default words, on and off
+local SWITCH_GAP = 6                               -- between the word and its box
+
+-- Switch(row, key, tooltip, y, o): a checkbox at the row's right end, y below its top, staging key
+-- (written at once with o.immediate), with a word beside it that follows the box: "Enabled" or
+-- "Disabled" (Cobanyte, 2026-10-25, Task #543). o.switchLabel = false leaves the word out;
+-- { on, off } gives other words. row.SwitchLabelW is the room the word takes.
+function Panel:Switch(row, key, tooltip, y, o)
   local window = self.window
+  o = o or {}
+  local words = o.switchLabel
+  if words == nil or words == true then words = SWITCH_WORDS end
+  local word
+  local function Paint(checked)
+    if not word then return end
+    word:SetText(checked and words[1] or words[2])
+    Color(word, checked and U.Colors.SAGE_GREEN or U.Colors.LABEL_GRAY)
+  end
   row.Switch = UI.CreateCheckbox(row, {
     size = 24, tooltip = tooltip,
     point = { "RIGHT", row, "TOPRIGHT", -(PAD + SCROLLBAR_ROOM) + 4, y },
-    onChange = function(checked) window:StageEdit(key, checked) end,
+    onChange = function(checked)
+      Paint(checked)
+      window:Edit(key, checked, o.immediate)
+    end,
   })
-  self:Bind(key, function(value) row.Switch:SetChecked(value and true or false) end)
+  row.SwitchLabelW = 0
+  if words then
+    word = row:CreateFontString(nil, "OVERLAY", U.Fonts.SMALL)
+    word:SetPoint("RIGHT", row.Switch, "LEFT", -SWITCH_GAP, 0)
+    word:SetJustifyH("RIGHT")
+    word:SetWordWrap(false)
+    row.SwitchLabel = word
+    for i = 1, 2 do
+      word:SetText(words[i] or "")
+      row.SwitchLabelW = math.max(row.SwitchLabelW, math.ceil(word:GetUnboundedStringWidth()))
+    end
+    row.SwitchLabelW = row.SwitchLabelW + SWITCH_GAP
+  end
+  self:Bind(key, function(value)
+    local checked = value and true or false
+    row.Switch:SetChecked(checked)
+    Paint(checked)
+  end)
   return row.Switch
 end
 
@@ -978,7 +1193,7 @@ function Panel:Checkbox(o)
     label = o.label,
     tooltip = o.tooltip,
     point = { "LEFT", row, "TOPLEFT", PAD + (o.indent or 0), -ROW_H / 2 },
-    onChange = function(checked) window:StageEdit(o.key, checked) end,
+    onChange = function(checked) window:Edit(o.key, checked, o.immediate) end,
   })
   row.SetRowEnabled = function(enabled) row.Checkbox:SetEnabled(enabled) end
   self:Bind(o.key, function(value) row.Checkbox:SetChecked(value and true or false) end)
@@ -1107,7 +1322,7 @@ function Panel:Slider(o)
     point = { "TOPLEFT", row, "TOPLEFT", PAD, -ROW_H + 2 },
     onChange = function(value)
       row.Value:SetText(format(value))
-      window:StageEdit(o.key, value)
+      window:Edit(o.key, value, o.immediate)
     end,
   })
   row.Reflow = function(width) row.Slider:SetWidth(width - PAD * 2 - SCROLLBAR_ROOM) end
@@ -1241,7 +1456,7 @@ local function InlineRadio(panel, o)
       point = { "LEFT", row, "TOPLEFT", x, y },
       onChange = function()
         Check(option.value)
-        window:StageEdit(o.key, option.value)
+        window:Edit(o.key, option.value, o.immediate)
       end,
     })
     row.Buttons[i] = { value = option.value, button = button }
@@ -1279,7 +1494,7 @@ function Panel:Radio(o)
       tooltip = option.tooltip or o.tooltip,
       onChange = function()
         Check(option.value)
-        window:StageEdit(o.key, option.value)
+        window:Edit(o.key, option.value, o.immediate)
       end,
     })
     row.Buttons[i] = { value = option.value, button = button }
@@ -1993,7 +2208,7 @@ function Panel:Tiles(o)
       if value == nil then return end
       if o.key then
         Paint(value)
-        window:StageEdit(o.key, value)
+        window:Edit(o.key, value, o.immediate)
       elseif o.onSelect and Current() ~= value then
         o.onSelect(value, window)
         Paint(Current())
@@ -2044,7 +2259,7 @@ function Panel:ToggleTiles(o)
       if not opt or opt.locked then return end
       local on = not tile.on
       PaintTile(tile, on)
-      window:StageEdit(opt.key, on)
+      window:Edit(opt.key, on, opt.immediate or o.immediate)
     end)
   end
   if type(o.options) == "function" then
@@ -2118,7 +2333,7 @@ function Panel:ActionTiles(o)
 end
 
 ---------------------------------------------------------------------------
--- Cards: BeginCard{ title, description, icon/atlas, dot, switchKey, switchTooltip, visibleWhen } then
+-- Cards: BeginCard{ title, description, icon/atlas, dot, switchKey, switchTooltip, switchLabel, immediate, visibleWhen } then
 -- any rows, then EndCard(); the rows sit in one bordered card under its
 -- header and show only while the card does
 ---------------------------------------------------------------------------
@@ -2157,7 +2372,8 @@ function Panel:BeginCard(o)
   head.Text:SetPoint("TOPLEFT", head.Title, "BOTTOMLEFT", 0, -3)
   head.Text:SetJustifyH("LEFT")
   head.Text:SetWordWrap(true)
-  local right = o.switchKey and 40 or 16
+  if o.switchKey then self:Switch(head, o.switchKey, o.switchTooltip, -CARD_HEAD_H / 2, o) end
+  local right = o.switchKey and (40 + (head.SwitchLabelW or 0)) or 16
   head.Reflow = function(width)
     head.Text:SetWidth(width - x - PAD - SCROLLBAR_ROOM - right)
   end
@@ -2173,7 +2389,6 @@ function Panel:BeginCard(o)
     head.Dot:SetPoint("LEFT", head.Title, "RIGHT", 6, 0)
     head.Dot:SetAtlas(STYLE.radioDotAtlas)
   end
-  if o.switchKey then self:Switch(head, o.switchKey, o.switchTooltip, -CARD_HEAD_H / 2) end
   table.insert(window.refreshers, function()
     head.Title:SetText(Live(o.title, window) or "")
     head.Text:SetText(Live(o.description, window) or "")
@@ -3468,10 +3683,13 @@ function UI.CreateSettingsWindow(opts)
   })
   Mixin(window, Settings)
   window.opts = opts
+  window.declaredHeight = height
   window.config = opts.config
   window.pending = {}
   window.editing = {}
   window.invalid = {}
+  window.commitAt = {}      -- immediate rows: when a key was last written (CommitNow)
+  window.commitHeld = {}    -- and the newest value held back until the throttle opens: { value }
   window.controls = {}
   window.keys = {}
   window.keyConfig = {}      -- [key] = the category config that owns it (a config or a function)
@@ -3595,7 +3813,7 @@ function UI.CreateSettingsWindow(opts)
     self:Sync()
     local panel = self.panels[self.activeCategory]
     if panel and panel.scroll then
-      C_Timer.After(0, panel.scroll.UpdateScrollIndicator)
+      C_Timer.After(0, function() panel:SettleView() end)
     end
   end)
   window:HookScript("OnHide", function(self)

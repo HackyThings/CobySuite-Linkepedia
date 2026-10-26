@@ -134,6 +134,7 @@ local idleAskedPos = {}         -- ...their queue positions...
 local idleAskedFrom = nil       -- ...and the queue they came from
 local idleFailCounts = {}      -- itemID -> unanswered asks so far (dead at IDLE_MAX_RETRIES)
 local idleSession = { asked = 0, stored = 0, dead = 0 }   -- this session's counts, for the status window
+local idleDeadRefused, idleDeadSilent = 0, 0   -- IDs killed since the last summary line (LogIdleDead)
 local PENDING_CAP = 5000        -- most unresolved IDs a completed scan hands the idle queue
 
 -- Localized C_Item functions, the clock and the client build. The Scanner
@@ -454,9 +455,9 @@ end
 -------------------------------------------------------------------------------
 -- State machine
 --
--- One step function per state, which OnUpdate calls. They stay apart because
--- the client's Lua 5.1 allows a function 60 upvalues, and the whole machine
--- in one function needs more.
+-- One step function per state, which Scanner.Step dispatches to. They stay
+-- apart because the client's Lua 5.1 allows a function 60 upvalues, and the
+-- whole machine in one function needs more.
 -------------------------------------------------------------------------------
 
 -- Stores the item when the client has it, or marks it dead when the server
@@ -1227,6 +1228,16 @@ end
 -- next pass through the queue.
 -------------------------------------------------------------------------------
 
+-- One debug line for the IDs killed since the last one, at the end of each
+-- pass and when the ticker stops: a full queue going dead would otherwise
+-- write a line per ID, enough to push the whole saved log out
+local function LogIdleDead()
+  if idleDeadRefused + idleDeadSilent == 0 then return end
+  Debug.Log("SCAN", "Idle scan: %d item IDs dead for this client build (%d refused, %d unanswered in %d tries)",
+    idleDeadRefused + idleDeadSilent, idleDeadRefused, idleDeadSilent, IDLE_MAX_RETRIES)
+  idleDeadRefused, idleDeadSilent = 0, 0
+end
+
 -- Settles one queued ID: true when it leaves the queue. With `asked`, a look
 -- that finds nothing counts as one of its tries.
 local function IdleSettle(itemID, asked)
@@ -1250,7 +1261,7 @@ local function IdleSettle(itemID, asked)
     idleFailCounts[itemID] = nil
     MarkDead(itemID)
     idleSession.dead = idleSession.dead + 1
-    Debug.Log("SCAN", "Idle scan: the server does not have item %d", itemID)
+    idleDeadRefused = idleDeadRefused + 1
     return true
   end
   if asked then
@@ -1259,7 +1270,7 @@ local function IdleSettle(itemID, asked)
       idleFailCounts[itemID] = nil
       MarkDead(itemID)
       idleSession.dead = idleSession.dead + 1
-      Debug.Log("SCAN", "Idle scan: item %d did not answer in %d tries, dead for this client build", itemID, IDLE_MAX_RETRIES)
+      idleDeadSilent = idleDeadSilent + 1
       return true
     end
     idleFailCounts[itemID] = fails
@@ -1314,6 +1325,7 @@ local function IdleTick()
   for _ = 1, rate do
     if idleNext > #pending then
       idleNext = 1
+      LogIdleDead()
       break
     end
     local itemID = pending[idleNext]
@@ -1340,14 +1352,15 @@ function Scanner.StartIdle()
 
   idleTicker = C_Timer.NewTicker(IDLE_TICK_SECONDS, function() Scanner.IdleTick() end)
 
-  Debug.Log("SCAN", "Idle scanner started (%d item IDs a second)", Config.Get(Config.Options.IDLE_SCAN_RATE) or 5)
+  Debug.State("SCAN", "Idle scanner started (%d item IDs a second)", Config.Get(Config.Options.IDLE_SCAN_RATE) or 5)
 end
 
 function Scanner.StopIdle()
   if idleTicker then
     idleTicker:Cancel()
     idleTicker = nil
-    Debug.Log("SCAN", "Idle scanner stopped")
+    LogIdleDead()
+    Debug.State("SCAN", "Idle scanner stopped")
   end
 end
 
@@ -1439,7 +1452,7 @@ function Scanner.CancelFindMax()
   if not findMaxJob then return false end
   findMaxFrame:SetScript("OnUpdate", nil)
   findMaxJob = nil
-  Debug.Log("SCAN", "FindMax canceled")
+  Debug.State("SCAN", "FindMax canceled")
   return true
 end
 
@@ -1482,7 +1495,7 @@ function Scanner.FindMaxItemID(arg)
       self:SetScript("OnUpdate", nil)
       findMaxJob = nil
       local duration = Now() - job.startedAt
-      Debug.Log("SCAN", "FindMax complete: max ID = %d, valid = %d, scanned %d in %.1fs",
+      Debug.State("SCAN", "FindMax complete: max ID = %d, valid = %d, scanned %d in %.1fs",
         job.maxFound, job.validCount, FINDMAX_CEILING, duration)
       Utilities.Message(string.format("Max item ID: %s  (%d valid IDs found in %.1fs)",
         Utilities.WrapColor(Utilities.Colors.TEXT_GOLD, tostring(job.maxFound)), job.validCount, duration))
@@ -1588,5 +1601,3 @@ Scanner._test = {
   -- here as long as the test does not yield
   Step = function(elapsed) OnUpdate(scanFrame, elapsed or 0.05) end,
 }
-
-Debug.Log("INIT", "Scanner module loaded")

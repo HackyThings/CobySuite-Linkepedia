@@ -304,7 +304,7 @@ SlashCmdList["COBYSLINKEPEDIALINK"] = function(input)
     if #results >= 20 then
       Msg("Showing first 20 results. Narrow your search for fewer matches.")
     else
-      Msg(#results .. " match" .. (#results == 1 and "" or "es") .. " found.")
+      Msg(#results .. " " .. CobySuite_CobysLinkepedia.Utilities.Plural(#results, "match", "matches") .. " found.")
     end
   end
 
@@ -486,13 +486,16 @@ worldFrame:SetScript("OnEvent", function(_, event, arg1, ...)
       CobysLinkepedia.Scanner.ReconcileIdle()
     end
 
-    -- Register item encounter event hooks (variant capture)
+    -- Variant capture: bags, equipment, loot, chat, trade and mail
     if CobysLinkepedia.Database.Capture and CobysLinkepedia.Database.Capture.RegisterEvents then
       CobysLinkepedia.Database.Capture.RegisterEvents()
     end
 
-    CobysLinkepedia.Debug.Log("INIT", "PLAYER_ENTERING_WORLD (login=%s, reload=%s)",
-      tostring(isLogin), tostring(isReload))
+    -- Not every loading screen: only the login or reload
+    if isLogin or isReload then
+      CobysLinkepedia.Debug.Log("INIT", "PLAYER_ENTERING_WORLD (login=%s, reload=%s)",
+        tostring(isLogin), tostring(isReload))
+    end
 
   elseif event == "PLAYER_LOGOUT" then
     -- Join pending scan writes onto their bucket strings, and write the

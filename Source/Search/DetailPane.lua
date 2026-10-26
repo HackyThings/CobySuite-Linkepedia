@@ -459,8 +459,9 @@ local function CreateWidthGrip(window, pane)
     local startWidth = window.detailWidth
     self.dragging = true
     self:SetScript("OnUpdate", function()
-      -- The pane grows as its left edge moves left
-      window:ApplyDetailWidth(startWidth - (GetCursorPosition() / scale - startX), true)
+      -- The pane grows as its left edge moves left. A drag chooses the width
+      -- it shows, so a drag past either limit never saves a width beyond it.
+      window:ApplyDetailWidth(window:ClampDetailWidth(startWidth - (GetCursorPosition() / scale - startX)), true)
       FollowMouse()
     end)
   end)
@@ -502,5 +503,3 @@ function Search.InitDetailPane(window)
   detailFrame:HookScript("OnShow", function() refreshVariants:Call() end)
   Debug.Log("INIT", "Detail pane initialized")
 end
-
-Debug.Log("INIT", "Search detail pane loaded")

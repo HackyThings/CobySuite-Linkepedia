@@ -338,5 +338,3 @@ function Variants.MacrosUsing(id)
   for i = characterBase + 1, characterBase + numCharacter do Check(i) end
   return names
 end
-
-CobysLinkepedia.Debug.Log("INIT", "Saved variants module loaded")

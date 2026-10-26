@@ -15,6 +15,21 @@
 -------------------------------------------------------------------------------
 CobysLinkepedia.Data.Changelog = {
   {
+    version = "2.0.7",
+    title = "Cleaner chat variants and smaller touches",
+    date = "2026-10-25",
+    changed = {
+      "Your addons: {/lp addons} lists Coby's Coinrot, A to Z, new pictures",
+      "Results: the game's own sort arrow on sorted columns",
+      "Settings: open them with {/lp settings} (no Options > AddOns page)",
+      "Smaller look and wording improvements, and faster",
+    },
+    fixed = {
+      "Variants from chat: only the item's own link is kept",
+      "Several smaller bug fixes",
+    },
+  },
+  {
     version = "2.0.6",
     title = "Patch 12.1.5 and smaller touches",
     date = "2026-10-13",

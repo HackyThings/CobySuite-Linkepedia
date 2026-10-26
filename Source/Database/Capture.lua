@@ -91,6 +91,17 @@ function Capture.ParseItemLink(link)
   return parsed
 end
 
+-- One whole item link: its own color escape, the item payload and the
+-- display text. The color and payload cannot hold a "|", so a match never
+-- starts at an earlier link (a profession, spell or quest link) or the words
+-- between; the display text may (a quality icon), and ends at its own "|h|r".
+local ITEM_LINK_PATTERN = "|c[^|]*|Hitem:[^|]*|h.-|h|r"
+
+-- The first whole item link in text, or nil
+function Capture.OwnItemLink(text)
+  return strmatch(text, ITEM_LINK_PATTERN)
+end
+
 -------------------------------------------------------------------------------
 -- Processing
 -------------------------------------------------------------------------------
@@ -152,7 +163,7 @@ local function ScanTextForLinks(text)
   local ok, pos = pcall(string.find, text, "|Hitem:", 1, true)
   if not ok or not pos then return end
   pcall(function()
-    for link in text:gmatch("|c.-|Hitem:.-|h.-|h|r") do
+    for link in text:gmatch(ITEM_LINK_PATTERN) do
       ProcessItemLink(link)
     end
   end)
@@ -303,5 +314,3 @@ captureFrame:SetScript("OnEvent", function(_, event, arg1)
     ScanTextForLinks(arg1)
   end
 end)
-
-Debug.Log("INIT", "Database capture module loaded")

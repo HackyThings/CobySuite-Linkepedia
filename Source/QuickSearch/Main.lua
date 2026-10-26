@@ -366,5 +366,3 @@ function QuickSearch.Hide()
     frame.SearchBox:ClearFocus()
   end
 end
-
-Debug.Log("INIT", "Quick search module loaded")

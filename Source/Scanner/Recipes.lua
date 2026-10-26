@@ -29,7 +29,6 @@ local PROGRESS_INTERVAL = 0.5
 
 local DoesSpellExist = C_Spell.DoesSpellExist
 local GetRecipeSchematic = C_TradeSkillUI.GetRecipeSchematic
-local GetItemInfoInstant = C_Item.GetItemInfoInstant
 
 local frame = CreateFrame("Frame")
 local job = nil                 -- { activeSeconds, startPosition, found, sinceProgress, waiting }
@@ -68,7 +67,7 @@ local function Complete(scan)
   scan.ceiling = scan.lastExisting
   local found = job.found
   Stop()
-  Debug.Log("SCAN", "Recipe scan complete: spells to %d, %d gear items indexed", scan.ceiling or 0, Database.GetRecipeCount())
+  Debug.State("SCAN", "Recipe scan complete: spells to %d, %d gear items indexed", scan.ceiling or 0, Database.GetRecipeCount())
   Fire(CobysLinkepedia.Events.RecipeIndexUpdated)
   Fire(CobysLinkepedia.Events.RecipeScanComplete, found)
 end
@@ -142,7 +141,7 @@ function Scanner.StartRecipeScan(manual)
   cancelledThisSession = false
   job = { activeSeconds = 0, startPosition = scan.next or 0, found = 0, sinceProgress = 0 }
   frame:SetScript("OnUpdate", Step)
-  Debug.Log("SCAN", "Recipe scan %s at spell %d", (scan.next or 0) > 0 and "resumed" or "started", scan.next or 0)
+  Debug.State("SCAN", "Recipe scan %s at spell %d", (scan.next or 0) > 0 and "resumed" or "started", scan.next or 0)
   Fire(CobysLinkepedia.Events.RecipeScanStarted)
   return true
 end
@@ -154,7 +153,7 @@ function Scanner.CancelRecipeScan(notify, keepSchedule)
   if not keepSchedule then cancelledThisSession = true end
   if not job then return false end
   Stop()
-  Debug.Log("SCAN", "Recipe scan canceled")
+  Debug.State("SCAN", "Recipe scan canceled")
   if notify ~= false then
     Fire(CobysLinkepedia.Events.RecipeScanCancelled)
   end
@@ -221,5 +220,3 @@ CobysLinkepedia.EventBus:Register({ ReceiveEvent = function()
   local Utilities = CobysLinkepedia.Utilities
   Utilities.Message(("Recipe index ready: %s craftable weapons and armor pieces."):format(BreakUpLargeNumbers(Database.GetRecipeCount())), "verbose")
 end }, { CobysLinkepedia.Events.RecipeScanComplete })
-
-Debug.Log("INIT", "Recipe scan module loaded")

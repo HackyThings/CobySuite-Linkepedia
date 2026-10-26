@@ -3,7 +3,6 @@
 
 local Search = CobysLinkepedia.Search
 local Utilities = CobysLinkepedia.Utilities
-local Debug = CobysLinkepedia.Debug
 
 -- Session-only filter state (resets on login)
 local filterState = {
@@ -149,5 +148,3 @@ end
 ApplyFilters = function()
   Search.SetFilters(filterState)
 end
-
-Debug.Log("INIT", "Search filter bar loaded")

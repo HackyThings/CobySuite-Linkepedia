@@ -368,13 +368,32 @@ local function IsValidVariant(v)
     and OptionalFinite(v.ilvl) and OptionalFinite(v.rank) and OptionalFinite(v.seen)
 end
 
--- Removes the records IsValidVariant refuses from one list, keeping the order
--- of the rest. Returns how many went.
+-- A record's link cut down to its own item link. Chat capture used to store
+-- a span of the chat line (another player's profession or spell link and
+-- their words, then the item); the item's own link is kept when it is the
+-- same variant, and true is returned. False when no such link is in it.
+local function RepairVariantLink(v)
+  local Capture = Database.Capture
+  if not Capture then return true end   -- nothing to check against: keep it
+  local own = Capture.OwnItemLink(v.link)
+  if own == v.link then return true end
+  if own and Database.VariantKeyForLink(own) == v.key then
+    v.link = own
+    return true
+  end
+  return false
+end
+
+-- Removes the records IsValidVariant refuses from one list, and those whose
+-- link holds no whole item link of their own, keeping the order of the rest.
+-- Returns how many went and how many links were cut down to their item link.
 local function DropDamagedVariants(list)
-  local kept, dropped = 0, 0
+  local kept, dropped, repaired = 0, 0, 0
   for i = 1, #list do
     local v = list[i]
-    if IsValidVariant(v) then
+    local link = IsValidVariant(v) and v.link
+    if link and RepairVariantLink(v) then
+      if v.link ~= link then repaired = repaired + 1 end
       kept = kept + 1
       list[kept] = v
     else
@@ -382,7 +401,7 @@ local function DropDamagedVariants(list)
     end
   end
   for i = #list, kept + 1, -1 do list[i] = nil end
-  return dropped
+  return dropped, repaired
 end
 
 -- Indexes the bucket strings: fills idToPrefix and the prefix list, counts
@@ -391,11 +410,11 @@ end
 -- whose id is not a canonical
 -- positive integer, a second record for an id already seen, or a bucket
 -- that is not a string is dropped, and a bucket that lost records is
--- rewritten without them, once. Called at ADDON_LOADED and by
--- ReplaceStorage; safe to call again. The index counts as complete only once
--- the walk reaches its end: the client stops a script that runs too long in
--- combat, and a Load cut off that way leaves part of the items unindexed
--- until the next Load (Database.IsIndexComplete, EnsureIndex).
+-- rewritten without them, once. Called at ADDON_LOADED, by ReplaceStorage,
+-- EnsureIndex and SwapStorage with a new table; safe to call again. The
+-- index counts as complete only once the walk reaches its end: the client
+-- stops a script that runs too long in combat, and a Load cut off that way
+-- leaves part of the items unindexed until the next Load (Database.IsIndexComplete, EnsureIndex).
 function Database.Load()
   indexComplete = false
   FlushAll()
@@ -458,18 +477,22 @@ function Database.Load()
   local db = COBYS_LINKEPEDIA_DB
   if type(db) == "table" then
     if type(db.variants) == "table" then
-      local damaged = 0
+      local damaged, repaired = 0, 0
       for itemID, list in pairs(db.variants) do
         if type(list) ~= "table" then
           db.variants[itemID] = nil
           Warn("Dropped the variant entry for %s: not a table", tostring(itemID))
         else
           -- Before the trim below, whose sort compares these fields
-          damaged = damaged + DropDamagedVariants(list)
+          local dropped, cut = DropDamagedVariants(list)
+          damaged, repaired = damaged + dropped, repaired + cut
         end
       end
       if damaged > 0 then
         Warn("Dropped %d damaged variant records", damaged)
+      end
+      if repaired > 0 then
+        Warn("Cut %d variant links down to their own item link (chat text was stored with them)", repaired)
       end
       local trimmed = TrimVariants(db.variants)
       if trimmed > 0 then
@@ -858,7 +881,9 @@ function Database.StoreVariant(itemID, link, parsed)
   itemID = tonumber(itemID)
   if not itemID or type(link) ~= "string" then return nil end
   local Capture = Database.Capture
-  parsed = parsed or (Capture and Capture.ParseItemLink(link))
+  -- Exactly one item link: never a span of chat around it
+  if not Capture or Capture.OwnItemLink(link) ~= link then return nil end
+  parsed = parsed or Capture.ParseItemLink(link)
   if not parsed or parsed.itemID ~= itemID or #parsed.bonusIDs == 0 then return nil end
 
   local key = VariantKey(parsed)
@@ -2021,5 +2046,3 @@ end
 function Database.ShowCorruptDialog()
   corruptPopup:Show()
 end
-
-CobysLinkepedia.Debug.Log("INIT", "Database module loaded")

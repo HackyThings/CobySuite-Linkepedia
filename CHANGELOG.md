@@ -4,6 +4,24 @@ All notable changes to Coby's Linkepedia are documented here. Format follows [Ke
 
 ## [Unreleased]
 
+## [2.0.7] - 2026-10-25
+
+### Changed
+
+- **Your other addons** (`/lp addons`) now lists Coby's Coinrot, sorted A to Z, with new pictures of each addon.
+- The Results columns show the game's own sort arrow.
+- Many smaller look and wording improvements across the windows.
+- Performance improvements.
+
+### Fixed
+
+- **Variants from chat.** When someone linked an item after another link (a profession, spell or quest link), the variant kept that link and their words with it, and typing the item's name sent them along. Only the item's own link is kept now, and links already saved that way are cut down to the item when you log in.
+- Several smaller bug fixes.
+
+### Removed
+
+- Coby's Linkepedia no longer has a page under the game's Options > AddOns. Open its settings with `/lp settings` or a right-click on the minimap button.
+
 ## [2.0.6] - 2026-10-13
 
 ### Changed
@@ -139,7 +157,8 @@ Coby's Linkepedia 2.0 is a complete rewrite of Linkepedia (last released as 1.5.
 - If the saved item database is damaged, it is cleared at login and a dialog offers to rebuild it. Favorites, history and settings are kept.
 - English game clients are supported: capitalisation is ignored for the letters A to Z, and a quoted search such as `"ring"` matches whole words.
 
-[Unreleased]: https://github.com/HackyThings/CobySuite-Linkepedia/compare/v2.0.6...HEAD
+[Unreleased]: https://github.com/HackyThings/CobySuite-Linkepedia/compare/v2.0.7...HEAD
+[2.0.7]: https://github.com/HackyThings/CobySuite-Linkepedia/releases/tag/v2.0.7
 [2.0.6]: https://github.com/HackyThings/CobySuite-Linkepedia/releases/tag/v2.0.6
 [2.0.5]: https://github.com/HackyThings/CobySuite-Linkepedia/releases/tag/v2.0.5
 [2.0.4]: https://github.com/HackyThings/CobySuite-Linkepedia/releases/tag/v2.0.4

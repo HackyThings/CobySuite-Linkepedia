@@ -4,7 +4,6 @@
 local Autocomplete = CobysLinkepedia.Autocomplete
 local Utilities = CobysLinkepedia.Utilities
 local Database = CobysLinkepedia.Database
-local Debug = CobysLinkepedia.Debug
 
 local ROW_HEIGHT = 22
 local ICON_SIZE = 18
@@ -274,7 +273,7 @@ function Autocomplete.ShowDropdown(editBox, results, revision)
       -- item's, so no rank is shown for it.
       local variantCount = Database.GetVariantCount(item.itemID)
       if variantCount > 0 then
-        row.VariantText:SetText(variantCount == 1 and "1 variant" or (variantCount .. " variants"))
+        row.VariantText:SetText(variantCount .. " " .. CobySuite_CobysLinkepedia.Utilities.Plural(variantCount, "variant"))
       else
         row.VariantText:SetText("")
       end
@@ -362,5 +361,3 @@ end
 function Autocomplete.IsDropdownUnderMouse()
   return dropdown ~= nil and dropdown:IsShown() and dropdown:IsMouseOver()
 end
-
-Debug.Log("INIT", "Autocomplete dropdown loaded")

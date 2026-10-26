@@ -15,7 +15,6 @@
 local Search = CobysLinkepedia.Search
 local Database = CobysLinkepedia.Database
 local Utilities = CobysLinkepedia.Utilities
-local Debug = CobysLinkepedia.Debug
 local SortDir = CobySuite_CobysLinkepedia.SortDir
 local SetQualityColor = CobySuite_CobysLinkepedia.UI.SetQualityColor
 
@@ -141,6 +140,7 @@ end)
 local jobFrame = CreateFrame("Frame")
 local jobActive = false
 local jobKind = nil     -- "finish" or "sort" while a job runs
+local sortingBase = nil -- the base a "sort" job orders
 local workSlices = 0    -- walk steps and job slices run, for GetListState
 local sliceStart = 0
 
@@ -156,6 +156,7 @@ local ShowOverlay   -- assigned with the overlay below
 local function StopJob()
   jobActive = false
   jobKind = nil
+  sortingBase = nil
   jobFrame:SetScript("OnUpdate", nil)
 end
 
@@ -923,6 +924,7 @@ local function PresentBase(base, owner)
     if not base.valid then return end
     Apply(result[1], result[2])
   end, owner == "system", "Sorting after combat...", "sort")
+  if jobKind == "sort" then sortingBase = base end
 end
 
 -------------------------------------------------------------------------------
@@ -1024,8 +1026,13 @@ end
 -- Lets a search's list go when the window closes: the browse list is kept,
 -- so reopening is instant, and reopening runs the search again
 function Search.ReleaseSearchList()
-  if buildSlot == "text" and builder then CancelBuild() end
-  if presented.base == bases.text then ShowEmptyList() end
+  local text = bases.text
+  -- A column sort of the search list holds its arrays too, and would put
+  -- them back on its last slice
+  local sortingText = jobKind == "sort" and sortingBase == text
+  if (buildSlot == "text" and builder) or sortingText then CancelBuild() end
+  if presented.base == text or sortingText then ShowEmptyList() end
+  text.valid = false
   bases.text = NewBase()
 end
 
@@ -1265,5 +1272,3 @@ local dbUpdateListener = { ReceiveEvent = function()
   end
 end }
 CobysLinkepedia.EventBus:Register(dbUpdateListener, { CobysLinkepedia.Events.DatabaseUpdated })
-
-Debug.Log("INIT", "Search results loaded")

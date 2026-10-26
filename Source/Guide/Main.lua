@@ -20,18 +20,15 @@ local function Scanning()
 end
 
 local function BuildLabel()
-  if Scanning() then return "Building..." end
+  -- Any scan, a Build or an Expand: the Expand button reads the same
+  if Scanning() then return "Scanning..." end
   local ok, count = pcall(CobysLinkepedia.Database.GetCount)
   if ok and type(count) == "number" and count > 0 then return "Rebuild Database" end
   return "Build Database"
 end
 
 -- The search window's speeds: Shift-click faster, Ctrl+Shift-click fastest
-local function Intensity()
-  if IsShiftKeyDown() and IsControlKeyDown() then return "Max" end
-  if IsShiftKeyDown() then return "Boost" end
-  return nil
-end
+local Intensity = CobysLinkepedia.Config.Examples.Intensity
 
 local function HasItems()
   local ok, count = pcall(CobysLinkepedia.Database.GetCount)
@@ -46,7 +43,7 @@ local EXPAND_BUTTON = {
   enabled = function() return HasItems() and not Scanning() end,
   onClick = function()
     CobysLinkepedia.Scanner.StartExpand(Intensity())
-    CobysLinkepedia.Debug.Log("INIT", "Guide: expand started")
+    CobysLinkepedia.Debug.Log("UI", "Guide: Expand Database clicked")
   end,
 }
 
@@ -72,7 +69,7 @@ Guide.SECTIONS = {
         enabled = function() return not Scanning() end,
         onClick = function()
           CobysLinkepedia.Scanner.StartBuild(false, Intensity())
-          CobysLinkepedia.Debug.Log("INIT", "Guide: build started from the database section")
+          CobysLinkepedia.Debug.Log("UI", "Guide: Build Database clicked")
         end,
       },
       EXPAND_BUTTON,
@@ -248,5 +245,3 @@ end
 function Guide.Show()
   window:OpenSection(Guide.SECTIONS[1].key)
 end
-
-CobysLinkepedia.Debug.Log("INIT", "Guide loaded")

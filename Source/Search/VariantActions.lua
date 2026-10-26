@@ -218,7 +218,7 @@ function Search.HandleVariantClick(entry, button, anchor)
   if not entry or not entry.variant then return end
   if button == "LeftButton" then
     -- the player's own dressing-room and chat-link clicks (Ctrl and Shift
-    -- by default), the dressing room first as before
+    -- by default), the dressing room first when both match
     if IsModifiedClick("DRESSUP") then
       DressUpItemLink(entry.variant.link)
     elseif IsModifiedClick("CHATLINK") then

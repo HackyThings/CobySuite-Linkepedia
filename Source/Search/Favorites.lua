@@ -89,5 +89,3 @@ function Search.InitFavorites(window)
 
   Search._favoritesFrame = f
 end
-
-Debug.Log("INIT", "Search favorites loaded")

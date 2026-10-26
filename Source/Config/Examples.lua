@@ -289,12 +289,15 @@ end
 -------------------------------------------------------------------------------
 -- Item database card
 -------------------------------------------------------------------------------
--- The search window's speeds: Shift-click faster, Ctrl+Shift-click fastest
+-- The scan speed a Build or Expand click asks for: Shift for Boost,
+-- Ctrl+Shift for Max (the scanner's INTENSITY_CAPS), else nil for the Scan
+-- speed setting. The guide's buttons and the scan footer read it too.
 local function Intensity()
   if IsShiftKeyDown() and IsControlKeyDown() then return "Max" end
   if IsShiftKeyDown() then return "Boost" end
   return nil
 end
+Examples.Intensity = Intensity
 
 -- The card's actions start scans the way the guide's buttons do, and never
 -- apply the window's staged settings: a scan runs at the saved speed

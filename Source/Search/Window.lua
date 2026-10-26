@@ -54,8 +54,8 @@ function CobysLinkepediaSearchWindowMixin:OnLoad()
   if Search.InitFavorites then Search.InitFavorites(self) end
 end
 
+-- The shell saves the size when a resize ends; this runs every frame of one
 function CobysLinkepediaSearchWindowMixin:OnSizeChanged()
-  self:SaveState()
   -- A narrower window may no longer fit the pane's chosen width
   if self.ContentEdge then self:ApplyDetailWidth(self.detailWidthChosen or self.detailWidth) end
 end
@@ -400,7 +400,7 @@ end
 do
   -- Shell: drag, resize grip, saved position/size (COBYS_LINKEPEDIA_WINDOW_STATE is
   -- created on ADDON_LOADED, hence the svTable function). No solid
-  -- background: the window has always shown the template art alone.
+  -- background: the template art alone.
   local f = CobySuite_CobysLinkepedia.UI.CreateWindow({
     name = "CobysLinkepediaSearchWindow",
     mixin = CobysLinkepediaSearchWindowMixin,
@@ -424,5 +424,3 @@ do
   -- have time to load and define their Init functions
   C_Timer.After(0, function() f:OnLoad() end)
 end
-
-Debug.Log("INIT", "Search window loaded")

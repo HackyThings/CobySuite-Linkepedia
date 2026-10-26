@@ -5,7 +5,6 @@
 local Minimap_Module = CobysLinkepedia.Minimap
 local Config = CobysLinkepedia.Config
 local Search = CobysLinkepedia.Search
-local Utilities = CobysLinkepedia.Utilities
 local Debug = CobysLinkepedia.Debug
 
 local launcher = CobySuite_CobysLinkepedia.UI.CreateLauncher({
@@ -65,12 +64,10 @@ end
 -- Listen for config changes to show/hide button. A nil key (the config was
 -- reset at load, a restored snapshot) means any option may have changed, so
 -- re-read it.
-local configListener = { ReceiveEvent = function(_, eventName, key)
+local configListener = { ReceiveEvent = function(_, _, key)
   if key == nil or key == Config.Options.SHOW_MINIMAP_BUTTON then
     launcher:RefreshShown()
   end
 end }
 
 CobysLinkepedia.EventBus:Register(configListener, { CobysLinkepedia.Events.ConfigChanged })
-
-Debug.Log("INIT", "Minimap module loaded")
