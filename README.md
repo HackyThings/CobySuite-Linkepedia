@@ -4,14 +4,16 @@
   <img src="https://raw.githubusercontent.com/HackyThings/CobySuite-Linkepedia/main/.publish-meta/icon/cobys-linkepedia-224.jpg" width="160" alt="Coby's Linkepedia">
 </p>
 
-Search, autocomplete and link any item in WoW Midnight (12.1), even ones you don't own. Coby's Linkepedia builds its item database from your own game client. Built for English clients.
+Search, autocomplete and link any item in WoW Midnight (12.1) and WoW Forever, even ones you don't own. Coby's Linkepedia builds its item database from your own game client. Built for English clients.
+
+In WoW Forever everything below works except the Variant Builder, which is retail only.
 
 ## Features
 
 - **Chat autocomplete:** type `[` and part of an item name, then press Tab to insert its link.
 - **Link by name:** send `[Item Name]` and it goes out as a link.
 - **Search window:** search and filter every item, keep Favorites, and see the items you linked recently.
-- **Variant Builder:** build and save crafted or upgrade-track versions of gear.
+- **Variant Builder (retail):** build and save crafted or upgrade-track versions of gear.
 - **Macro tokens:** `${i=6948}` links an item by ID, `${v=N}` a saved variant.
 - **Quick search:** `/lp qs` opens a small search bar that drops a link into chat.
 - **Stays current:** Expand Database adds a new patch's items without an addon update, and variants you come across are captured as you play.

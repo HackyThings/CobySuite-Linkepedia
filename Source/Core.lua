@@ -27,6 +27,15 @@ function CobysLinkepedia.IsDevelopmentBuild()
   return CobysLinkepedia.Tests ~= nil
 end
 
+-- Whether the Variant Builder is offered: retail only. WoW Forever has none
+-- of the upgrade tracks or crafted qualities it builds (Cobanyte,
+-- 2026-11-12), so there its tab, buttons, menu entries, commands, guide
+-- section and recipe index are all left out. Captured and saved variants
+-- and ${v=N} tokens stay in both games.
+function CobysLinkepedia.HasVariantBuilder()
+  return CobySuite_CobysLinkepedia.Utilities.CurrentGame() == "retail"
+end
+
 -------------------------------------------------------------------------------
 -- EventBus event constants
 -------------------------------------------------------------------------------
@@ -142,6 +151,19 @@ CobysLinkepedia.WindowsReset = {
   end,
 }
 
+-- The commands of this game: an entry marked builder (the Variant Builder's)
+-- only where the builder is offered
+local function ForThisGame(commands)
+  local list = {}
+  for _, command in ipairs(commands) do
+    if not command.builder or CobysLinkepedia.HasVariantBuilder() then
+      command.builder = nil
+      list[#list + 1] = command
+    end
+  end
+  return list
+end
+
 -- Kept on the addon table so development checks can read the help lines
 -- (CobySuite.Slash.HelpLines) without printing them
 CobysLinkepedia.SlashOptions = {
@@ -184,7 +206,7 @@ CobysLinkepedia.SlashOptions = {
       end
     end,
     tests = function() return CobysLinkepedia.Tests end,
-    extra = {
+    extra = ForThisGame({
       { name = "build", aliases = { "rebuild" }, help = "Build the item database from scratch (asks first when it already has items)",
         run = function()
           if CobysLinkepedia.Scanner.StartBuild then
@@ -242,10 +264,12 @@ CobysLinkepedia.SlashOptions = {
       -- help line only: a bare "reset" is the standard reset entry's resetBare
       { usage = "reset", help = "Delete the item database (asks first); settings, favorites, history and saved variants stay" },
       { name = "recipes", usage = "recipes [cancel]", help = "Index the recipes the Variant Builder uses; cancel stops it",
+        builder = true,
         run = function(rest)
           CobysLinkepedia.Scanner.RecipeScanCommand(rest and rest:match("^%s*(%S+)"))
         end },
       { name = "variant", usage = "variant [itemID]", help = "Open the Variant Builder, optionally on an item ID",
+        builder = true,
         run = function(rest)
           CobysLinkepedia.Search.OpenBuilder(tonumber(rest and rest:match("^%s*(%d+)")))
         end },
@@ -255,7 +279,7 @@ CobysLinkepedia.SlashOptions = {
             CobysLinkepedia.Scanner.FindMaxItemID(rest and rest:match("^%s*(%S+)"))
           end
         end },
-    },
+    }),
   }),
   -- /link has its own slash entry below, so the help names it here
   footer = { "  " .. CobySuite_CobysLinkepedia.Utilities.FormatCommandLine("/link <name>", "Print up to 20 matching item links in your chat frame") },
@@ -434,8 +458,11 @@ function CobysLinkepedia.Startup.OnLogin()
   CobysLinkepedia.QuickSearch.EnsureFrame()
 
   -- The recipe index the Variant Builder needs, when this client build has
-  -- not been indexed yet (it starts a little later and yields to everything)
-  CobysLinkepedia.Scanner.ScheduleRecipeScan()
+  -- not been indexed yet (it starts a little later and yields to everything);
+  -- none where the builder is not offered
+  if CobysLinkepedia.HasVariantBuilder() then
+    CobysLinkepedia.Scanner.ScheduleRecipeScan()
+  end
 
   -- Register minimap button, addon compartment, LDB
   if CobysLinkepedia.Minimap.Initialize then

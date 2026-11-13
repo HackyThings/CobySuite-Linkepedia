@@ -233,11 +233,14 @@ local function RefreshVariants()
   f.VariantList:SetEntries(entries)
 
   local gear = CobysLinkepedia.Variants.IsGear(itemID)
-  f.BuildButton:SetShown(gear)
+  local builder = gear and CobysLinkepedia.HasVariantBuilder()
+  f.BuildButton:SetShown(builder)
   if #entries > 0 then
     f.VariantsEmpty:SetText("")
-  elseif gear then
+  elseif builder then
     f.VariantsEmpty:SetText("None yet. Build one, or carry, loot or see one linked.")
+  elseif gear then
+    f.VariantsEmpty:SetText("None yet. Carry, loot or see one linked.")
   else
     f.VariantsEmpty:SetText("None captured.")
   end

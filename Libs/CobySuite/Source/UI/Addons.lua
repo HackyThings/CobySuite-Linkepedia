@@ -1,6 +1,7 @@
 ---------------------------------------------------------------------------
 -- CobySuite.UI.ToggleAddonsWindow / AddonsGuideSection: "/<cmd> addons",
--- the same list in every addon of every addon Cobanyte has released
+-- the same list in every addon of every addon Cobanyte has released for the
+-- game the client is (retail or Forever: UI.AddonsForThisGame)
 --
 -- One guide-style section per addon (UI.AddonCatalog, generated): its icon,
 -- name and a line saying whether the player has it; open, its description,
@@ -47,6 +48,41 @@ local actualSize = false   -- the large view's Actual size choice, kept for the 
 local Seams = {}
 UI.AddonsSeams = Seams
 function Seams.IsLoaded(folder) return C_AddOns.IsAddOnLoaded(folder) end
+-- Which game's addons the list shows: the client's own (U.CurrentGame)
+function Seams.Game() return U.CurrentGame() end
+
+-- The catalog entries made for the game the client is (each entry's games,
+-- from its TOC's interface numbers; an entry without them is retail's)
+local function Entries()
+  local game, list = Seams.Game(), {}
+  for _, entry in ipairs(UI.AddonCatalog or {}) do
+    local games = entry.games or { retail = true }
+    if games[game] then list[#list + 1] = entry end
+  end
+  return list
+end
+UI.AddonsForThisGame = Entries
+
+-- True when this game's list holds an addon besides the host. When it holds
+-- only the host (Linkepedia on Forever), the command says so in chat and the
+-- guide leaves its addons section out
+local function HasOthers(host)
+  for _, entry in ipairs(Entries()) do
+    if entry.folder ~= host then return true end
+  end
+  return false
+end
+UI.AddonsHasOthers = HasOthers
+
+local GAME_NAMES = { forever = "WoW Forever" }
+
+local function OnlyAddonText()
+  local name = GAME_NAMES[Seams.Game()]
+  if name then
+    return "This is my only addon for " .. name .. " so far. My others are for retail."
+  end
+  return "This is my only addon so far."
+end
 
 -- Where the pictures are: the library's own folder in development, the
 -- copy embedded in the host addon in a release (Build.lua names it)
@@ -492,7 +528,7 @@ end
 
 local function Sections(window, host)
   local sections = {}
-  for _, entry in ipairs(UI.AddonCatalog or {}) do
+  for _, entry in ipairs(Entries()) do
     sections[#sections + 1] = {
       key = entry.folder, title = entry.title, icon = entry.icon, summary = SummaryText(entry, host),
       body = entry.blurb,
@@ -539,7 +575,7 @@ local function Build(opts)
   -- after what counts as installed changed (the seam above)
   function guide:RefreshStanding()
     for _, s in ipairs(self.sections) do
-      for _, entry in ipairs(UI.AddonCatalog or {}) do
+      for _, entry in ipairs(Entries()) do
         if entry.folder == s.key then
           s.def.summary = SummaryText(entry, host)
           if s.summary then s.summary:SetText(s.def.summary) end
@@ -569,10 +605,16 @@ local function Build(opts)
 end
 
 -- Opens or closes the host addon's list; asked for in combat before it was
--- ever built, it opens once combat ends
+-- ever built, it opens once combat ends. With no other addon for this game
+-- it only says so in chat
 function UI.ToggleAddonsWindow(opts)
   opts = opts or {}
   local host = opts.host or "?"
+  if not HasOthers(host) then
+    local say = opts.message or print
+    say(OnlyAddonText())
+    return
+  end
   local w = windows[host]
   if w then
     w:Toggle()
@@ -588,8 +630,11 @@ function UI.ToggleAddonsWindow(opts)
   end, "addons:" .. host)
 end
 
--- The guide's last section: what the list is and how to open it
+-- The guide's last section: what the list is and how to open it. nil when
+-- this game has no other addon to list, so the guide leaves it out (callers
+-- append it with SECTIONS[#SECTIONS + 1] =, which a nil leaves unchanged)
 function UI.AddonsGuideSection(opts)
+  if not HasOthers(opts.host or "?") then return nil end
   local T = UI.GuideText
   local slash = (opts.slash or "/?") .. " addons"
   return {

@@ -255,7 +255,9 @@ function Examples.TokensText(window)
     end
   end
   if enabled and not variantID then
-    lines[#lines + 1] = Grey("Save a variant in the Variant Builder to give it a number.")
+    lines[#lines + 1] = Grey(CobysLinkepedia.HasVariantBuilder()
+      and "Save a variant in the Variant Builder to give it a number."
+      or "Save a variant from its right-click menu to give it a number.")
   end
   return table.concat(lines, "\n")
 end

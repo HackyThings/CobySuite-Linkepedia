@@ -308,7 +308,10 @@ local TAB_TOOLTIPS = {
 function CobysLinkepediaSearchWindowMixin:BuildTabs()
   local tabs = {}
   for i, name in ipairs(TAB_NAMES) do
-    tabs[i] = { key = name:lower(), text = name, tooltip = TAB_TOOLTIPS[i] }
+    -- Variants is the Variant Builder, left out where it is not offered
+    if name ~= "Variants" or CobysLinkepedia.HasVariantBuilder() then
+      tabs[#tabs + 1] = { key = name:lower(), text = name, tooltip = TAB_TOOLTIPS[i] }
+    end
   end
   self.BottomTabs = CobySuite_CobysLinkepedia.UI.CreateBottomTabs(self, {
     name = "CobysLinkepediaSearchWindowTabs",

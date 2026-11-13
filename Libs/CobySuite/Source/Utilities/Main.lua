@@ -28,6 +28,15 @@ function U.IsFiniteNumber(value)
   return not string.find(tostring(value), "[^%d%.eE%+%-]")
 end
 
+-- CurrentGame(): which game the client is, "forever" (World of Warcraft:
+-- Forever, whose project constant is WOW_PROJECT_CAMELOT; it is nil on
+-- retail) or "retail". An addon's TOC lists interface 16001 for Forever
+-- beside the retail number when it runs in both.
+function U.CurrentGame()
+  if WOW_PROJECT_CAMELOT ~= nil and WOW_PROJECT_ID == WOW_PROJECT_CAMELOT then return "forever" end
+  return "retail"
+end
+
 -- IsSecret(value): a 12.x secret value, which addon code may hold in a
 -- variable or a table value but not compare, do arithmetic on or use as a
 -- table key. IsSecretTable(value): a table that is itself secret

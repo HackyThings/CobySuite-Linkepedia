@@ -489,7 +489,7 @@ function Search.ShowContextMenu(anchor, item)
       PutInChat(CobysLinkepedia.Linkify.FormatToken(item.itemID))
     end)
 
-    if CobysLinkepedia.Variants.IsGear(item.itemID) then
+    if CobysLinkepedia.Variants.IsGear(item.itemID) and CobysLinkepedia.HasVariantBuilder() then
       rootDescription:CreateDivider()
       rootDescription:CreateButton("Build Variant", function()
         Search.OpenBuilder(item.itemID)

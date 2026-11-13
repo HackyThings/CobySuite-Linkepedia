@@ -4,6 +4,16 @@ All notable changes to Coby's Linkepedia are documented here. Format follows [Ke
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-11-12
+
+### Added
+
+- **WoW Forever.** Coby's Linkepedia now runs in World of Warcraft: Forever as well as retail, from the same download. Everything works there except the Variant Builder, which needs retail's upgrade tracks and crafted qualities, so it is left out in WoW Forever. Variants you carry, loot or see linked are still captured, and you can save them from their right-click menu.
+
+### Changed
+
+- `/lp addons` lists only the addons made for the game you are playing. In WoW Forever, where Coby's Linkepedia is the only one so far, it says so in chat instead, and the guide leaves out its other-addons section.
+
 ## [2.0.7] - 2026-10-25
 
 ### Changed
@@ -157,7 +167,8 @@ Coby's Linkepedia 2.0 is a complete rewrite of Linkepedia (last released as 1.5.
 - If the saved item database is damaged, it is cleared at login and a dialog offers to rebuild it. Favorites, history and settings are kept.
 - English game clients are supported: capitalisation is ignored for the letters A to Z, and a quoted search such as `"ring"` matches whole words.
 
-[Unreleased]: https://github.com/HackyThings/CobySuite-Linkepedia/compare/v2.0.7...HEAD
+[Unreleased]: https://github.com/HackyThings/CobySuite-Linkepedia/compare/v2.1.0...HEAD
+[2.1.0]: https://github.com/HackyThings/CobySuite-Linkepedia/releases/tag/v2.1.0
 [2.0.7]: https://github.com/HackyThings/CobySuite-Linkepedia/releases/tag/v2.0.7
 [2.0.6]: https://github.com/HackyThings/CobySuite-Linkepedia/releases/tag/v2.0.6
 [2.0.5]: https://github.com/HackyThings/CobySuite-Linkepedia/releases/tag/v2.0.5

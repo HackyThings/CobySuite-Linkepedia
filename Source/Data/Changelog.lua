@@ -15,6 +15,18 @@
 -------------------------------------------------------------------------------
 CobysLinkepedia.Data.Changelog = {
   {
+    version = "2.1.0",
+    title = "WoW Forever",
+    date = "2026-11-12",
+    new = {
+      "WoW Forever: Coby's Linkepedia runs there too, from the same download",
+      "Variant Builder: retail only, so WoW Forever leaves it out",
+    },
+    changed = {
+      "Your addons: {/lp addons} lists only addons made for the game you play",
+    },
+  },
+  {
     version = "2.0.7",
     title = "Cleaner chat variants and smaller touches",
     date = "2026-10-25",

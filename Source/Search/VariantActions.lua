@@ -235,9 +235,11 @@ function Search.ShowVariantMenu(anchor, entry)
   local variant = entry.variant
   MenuUtil.CreateContextMenu(anchor, function(_, root)
     root:CreateTitle(Search.VariantName(variant.link, entry.id))
-    root:CreateButton("Open in Variant Builder", function()
-      Search.OpenBuilder(entry.id, variant)
-    end)
+    if CobysLinkepedia.HasVariantBuilder() then
+      root:CreateButton("Open in Variant Builder", function()
+        Search.OpenBuilder(entry.id, variant)
+      end)
+    end
 
     local saved = variant.savedID and Variants.Get(variant.savedID)
     if saved then

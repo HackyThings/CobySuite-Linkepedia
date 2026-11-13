@@ -1409,6 +1409,7 @@ end
 -- Opens the search window on the Variants tab, for itemID when given.
 -- variant (a variant entry's variant) opens that saved or captured variant.
 function Search.OpenBuilder(itemID, variant)
+  if not CobysLinkepedia.HasVariantBuilder() then return end
   local window = CobysLinkepediaSearchWindow
   if not window or not frame then return end
   if not window:IsShown() then

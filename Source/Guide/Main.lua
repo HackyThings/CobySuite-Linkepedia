@@ -209,6 +209,13 @@ Guide.SECTIONS = {
   },
 }
 -- The last section in every addon's guide: the list of every addon by Cobanyte
+-- The Variant Builder's section only where the builder is offered (retail)
+if not CobysLinkepedia.HasVariantBuilder() then
+  for i = #Guide.SECTIONS, 1, -1 do
+    if Guide.SECTIONS[i].key == "variants" then table.remove(Guide.SECTIONS, i) end
+  end
+end
+
 Guide.SECTIONS[#Guide.SECTIONS + 1] = CobySuite_CobysLinkepedia.UI.AddonsGuideSection(CobysLinkepedia.AddonsList)
 
 local window = CobySuite_CobysLinkepedia.UI.CreateGuideWindow({

@@ -5,13 +5,15 @@
 -- CobySuite.UI.AddonCatalog: every released addon, in list order. Images live in
 -- Media\Showcase\<folder>\<file>: w and h are the picture's size in pixels on a
 -- cw x ch canvas (crop with SetTexCoord(0, w / cw, 0, h / ch)). thumb is the same
--- picture shrunk for the list's small tiles, described the same way.
+-- picture shrunk for the list's small tiles, described the same way. games are
+-- the games its TOC is made for (retail, forever); the list shows the client's.
 CobySuite_CobysLinkepedia.UI.AddonCatalog = {
   {
     folder = "ApexFury", title = "ApexFury",
     icon = "Interface\\Icons\\inv12_apextalent_evoker_risingfury",
     slash = "/af", url = "https://www.curseforge.com/wow/addons/apexfury",
     blurb = "A sound alert at 4 stacks of Rising Fury for Devastation Evokers, so you never miss the window.",
+    games = { retail = true },
     images = {
       { file = "01-6f131624.png", w = 753, h = 595, cw = 1024, ch = 1024,
         thumb = { file = "01-thumb-acfe3982.png", w = 213, h = 168, cw = 256, ch = 256 },
@@ -32,6 +34,7 @@ CobySuite_CobysLinkepedia.UI.AddonCatalog = {
     icon = "Interface\\AddOns\\CobysCoinrot\\Media\\Icon",
     slash = "/coinrot", url = "https://www.curseforge.com/wow/addons/cobys-coinrot",
     blurb = "Buy Satchels of Corrosive Coins from Er'inye with your Corrosive Souls and open them, all from one button.",
+    games = { retail = true },
     images = {
       { file = "01-5cdf761b.png", w = 336, h = 424, cw = 512, ch = 512,
         thumb = { file = "01-thumb-296dacdd.png", w = 133, h = 168, cw = 256, ch = 256 },
@@ -52,6 +55,7 @@ CobySuite_CobysLinkepedia.UI.AddonCatalog = {
     icon = "Interface\\Icons\\inv_121_crest_myth",
     slash = "/ce", url = "https://www.curseforge.com/wow/addons/cobys-crest-exchange",
     blurb = "A better crest exchange at Vaskarn: see what you can convert, pick an amount and convert in a few clicks.",
+    games = { retail = true },
     images = {
       { file = "01-cf63daf3.png", w = 546, h = 474, cw = 1024, ch = 512,
         thumb = { file = "01-thumb-f9e0d615.png", w = 194, h = 168, cw = 256, ch = 256 },
@@ -72,6 +76,7 @@ CobySuite_CobysLinkepedia.UI.AddonCatalog = {
     icon = "Interface\\Icons\\INV_Misc_Coin_01",
     slash = "/ccs", url = "https://www.curseforge.com/wow/addons/currency-searcher",
     blurb = "A search box on the Currency tab that finds currencies inside collapsed headers.",
+    games = { retail = true },
     images = {
       { file = "01-1b51c4e8.png", w = 397, h = 421, cw = 512, ch = 512,
         thumb = { file = "01-thumb-6b9d5b2b.png", w = 158, h = 168, cw = 256, ch = 256 },
@@ -95,6 +100,7 @@ CobySuite_CobysLinkepedia.UI.AddonCatalog = {
     icon = "Interface\\Icons\\INV_Misc_Book_09",
     slash = "/lp", url = "https://www.curseforge.com/wow/addons/linkepedia",
     blurb = "Search, autocomplete and link any item in the game, from a database your own client builds.",
+    games = { retail = true, forever = true },
     images = {
       { file = "01-cd29ed51.png", w = 1021, h = 734, cw = 1024, ch = 1024,
         thumb = { file = "01-thumb-0f9ef4b8.png", w = 234, h = 168, cw = 256, ch = 256 },
@@ -118,6 +124,7 @@ CobySuite_CobysLinkepedia.UI.AddonCatalog = {
     icon = "Interface\\Icons\\INV_Misc_Bag_10",
     slash = "/ls", url = "https://www.curseforge.com/wow/addons/cobys-loot-sweeper",
     blurb = "Sell the loot from your old-raid and dungeon runs in one go, and see what is worth auctioning. What you already had stays safe.",
+    games = { retail = true },
     images = {
       { file = "01-5aad2f21.png", w = 815, h = 615, cw = 1024, ch = 1024,
         thumb = { file = "01-thumb-5c6772e8.png", w = 223, h = 168, cw = 256, ch = 256 },
@@ -141,6 +148,7 @@ CobySuite_CobysLinkepedia.UI.AddonCatalog = {
     icon = "Interface\\Icons\\UI_Chat",
     slash = "/pow", url = "https://www.curseforge.com/wow/addons/public-order-whisper",
     blurb = "A whisper button on public crafting orders that sends your message, with the item link, to the player who placed it.",
+    games = { retail = true },
     images = {
       { file = "01-37c52d3e.png", w = 784, h = 100, cw = 1024, ch = 128,
         thumb = { file = "01-thumb-8362151d.png", w = 248, h = 32, cw = 256, ch = 32 },
@@ -161,6 +169,7 @@ CobySuite_CobysLinkepedia.UI.AddonCatalog = {
     icon = "Interface\\Icons\\achievement_faction_goldenlotus",
     slash = "/recollect", url = "https://www.curseforge.com/wow/addons/recollect",
     blurb = "Hover any item to see what it is for and whether you still need it, across your bags, bank and warband bank.",
+    games = { retail = true },
     images = {
       { file = "01-31de5075.png", w = 1024, h = 650, cw = 1024, ch = 1024,
         thumb = { file = "01-thumb-7e949f92.png", w = 248, h = 157, cw = 256, ch = 256 },
